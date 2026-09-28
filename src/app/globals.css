@@ -1,0 +1,81 @@
+@import "tailwindcss";
+
+/* Tema único oscuro: la marca vive en negro y cromo. */
+:root {
+  --fondo: #0b0b0d;
+  --superficie: #131316;
+  --superficie-2: #1b1b1f;
+  --linea: rgb(255 255 255 / 0.09);
+  --texto: #ececef;
+  --tenue: #a1a1aa;
+  --cromo: #e4e4e8;
+  --peligro: #f87171;
+  --exito: #86efac;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-fondo: var(--fondo);
+  --color-superficie: var(--superficie);
+  --color-superficie-2: var(--superficie-2);
+  --color-linea: var(--linea);
+  --color-texto: var(--texto);
+  --color-tenue: var(--tenue);
+  --color-cromo: var(--cromo);
+  --color-peligro: var(--peligro);
+  --color-exito: var(--exito);
+  --font-sans: var(--font-geist);
+  --font-display: var(--font-archivo);
+}
+
+body {
+  background: var(--fondo);
+  color: var(--texto);
+}
+
+/* Titulares anchos, en la línea del logo */
+.display {
+  font-family: var(--font-display);
+  font-stretch: 118%;
+  letter-spacing: -0.02em;
+}
+
+/* Brillo cromado, usado con moderación (logo y cifras destacadas) */
+.cromado {
+  background: linear-gradient(180deg, #ffffff 0%, #e4e4e7 45%, #a1a1aa 70%, #d4d4d8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+::selection {
+  background: var(--cromo);
+  color: var(--fondo);
+}
+
+:focus-visible {
+  outline: 2px solid var(--cromo);
+  outline-offset: 3px;
+}
+
+@keyframes desfile {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.desfile {
+  animation: desfile 60s linear infinite;
+}
+
+.desfile:hover {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .desfile { animation: none; }
+  html { scroll-behavior: auto; }
+}
+
+html {
+  scroll-behavior: smooth;
+}
