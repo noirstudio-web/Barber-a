@@ -1,38 +1,38 @@
-# Barbería con reservas online (Noir Studio)
+# Noir Studio: web con reservas para barberías
 
-Web para barberías y salones de belleza donde los clientes reservan solos: eligen servicio, barbero y hora libre, y la cita queda en la agenda del dueño.
+Plataforma de alquiler: cada barbería tiene su propia web con reservas online y su panel de administración. Noir Studio vende los planes por WhatsApp, entrega un código de activación y administra todas las suscripciones desde su propio panel.
 
-La demo es **Filo Barber Club**, una barbería ficticia en Bogotá.
+## Rutas
 
-## Qué incluye
+| Ruta | Para quién | Qué es |
+|---|---|---|
+| `/` | Dueños de barberías | Página de venta de Noir Studio: planes y botones de compra por WhatsApp |
+| `/<barberia>` | Clientes de la barbería | Web de cada barbería (ej. `/filo`, la demo) |
+| `/<barberia>/reservar` | Clientes | Reserva: servicio, barbero, fecha y hora, datos |
+| `/admin/registro` | Dueño nuevo | Activación con el código: crea la barbería y su usuario |
+| `/admin` | Dueño y equipo | Panel de la barbería |
+| `/noir` | Noir Studio | Panel de la plataforma: barberías, códigos y suscripciones |
+| `/noir/registro` | Noir Studio | Crear una cuenta de Noir con el código maestro |
 
-**Web pública**
-- Portada con foto, eslogan y botón "Reservar cita"
-- Servicios y precios (cada servicio lleva directo a reservarlo)
-- Equipo de barberos con foto, especialidad y estilo
-- Galería estilo Instagram
-- Reseñas de clientes
-- Ubicación con mapa de Google, horario y botón "Cómo llegar"
-- Botón flotante de WhatsApp
+## Cómo se vende y se activa
 
-**Reservas** (`/reservar`)
-1. El cliente elige el servicio.
-2. Elige el barbero, o "el que esté disponible" (se asigna al que tenga menos citas ese día).
-3. Ve un calendario que solo muestra días y horas libres (según horario, citas y bloqueos).
-4. Pone nombre y celular, y recibe la confirmación con un código.
-5. Desde la confirmación puede enviar la cita al WhatsApp de la barbería, agregarla a su calendario o cancelarla.
+1. El cliente escribe por WhatsApp desde la página de venta y elige un plan.
+2. En `/noir/codigos` generas un código (plan y días) y lo envías con el botón de WhatsApp. El mensaje ya incluye el enlace de activación.
+3. El cliente abre el enlace, pone el nombre de su barbería, su usuario y contraseña. Su web queda en línea al instante con servicios de ejemplo y él como primer barbero.
+4. Desde su panel edita todo: nombre, frase, descripción, WhatsApp, Instagram, dirección, horario, logo, portada, servicios y precios, barberos con foto, galería y reseñas. También crea los usuarios de su equipo.
+5. Para renovar o cambiar de plan le envías otro código y lo pone en **Suscripción**. También puedes extender días, cambiar el plan o suspender desde `/noir`.
 
-Dos personas no pueden reservar la misma hora: la reserva se hace dentro de una transacción con un candado por día.
+Si la suscripción vence o la suspendes, su web muestra "no disponible" y el panel solo deja entrar a Suscripción. No se borra ningún dato.
 
-**Panel del dueño** (`/admin`)
-- Usuarios con contraseña: cada persona crea el suyo en `/admin/registro` con el código del negocio (`ADMIN_PASSWORD`). El primero queda como dueño y puede eliminar usuarios o nombrar a otro dueño. Cada uno cambia su contraseña en "Mi cuenta".
-- Agenda del día (columnas por barbero) y de la semana
-- Marcar citas como atendida, no asistió o cancelada, y escribirle al cliente por WhatsApp
-- Bloquear horarios: almuerzos, días libres, vacaciones (por barbero o para toda la barbería)
-- Crear, editar y ocultar servicios y precios
-- Barberos: nombre, especialidad y celular de WhatsApp (para sus avisos)
-- En cada cita, botones para recordarle por WhatsApp al cliente o al barbero, con el mensaje ya escrito
-- Clientes con historial: visitas, total gastado, faltas y barbero habitual
+## Planes
+
+Se configuran en `src/config/planes.ts` (precio, días y límites):
+
+| Plan | Precio | Incluye |
+|---|---|---|
+| Prueba gratis | 0, 7 días | Todo lo del Premium |
+| Básico | 10 USD/mes | Web + reservas + panel, hasta 3 barberos, recordatorios manuales |
+| Premium | 35 USD/mes | Barberos ilimitados, recordatorios automáticos por WhatsApp, galería y reseñas |
 
 ## Correrlo en local
 
@@ -41,32 +41,28 @@ npm install
 npm run dev
 ```
 
-Abre http://localhost:3000. Sin configurar nada, se usa una base de datos Postgres embebida (PGlite) en `.data/`, con barberos, servicios y citas de ejemplo. Para entrar al panel, crea tu usuario en http://localhost:3000/admin/registro con el código `demo`.
+Sin configurar nada se usa una base de datos Postgres embebida (PGlite) en `.data/` y las fotos se guardan en `public/uploads/`.
 
-Para empezar de cero con los datos de ejemplo, detén el servidor y borra la carpeta `.data/`.
+- Demo: http://localhost:3000/filo
+- Panel de la demo: usuario `demo`, contraseña `demo1234` (solo existe en local)
+- Panel de Noir: crea tu cuenta en http://localhost:3000/noir/registro con el código maestro `demo`
 
-## Adaptarlo a otra barbería
+Para empezar de cero, detén el servidor y borra `.data/` y `public/uploads/`.
 
-| Qué | Dónde |
+## Publicarlo (Vercel)
+
+Variables de entorno (ver `.env.example`):
+
+| Variable | Para qué |
 |---|---|
-| Nombre, WhatsApp, dirección, zona horaria, moneda | `src/config/negocio.ts` |
-| Horario de atención e intervalo de reservas | `src/config/negocio.ts` |
-| Galería, reseñas y textos de beneficios | `src/config/contenido.ts` |
-| Fotos | `public/img/` |
-| Barberos y servicios iniciales | `src/db/seed.ts` (luego los servicios se editan desde el panel) |
-| Colores y tipografía | `src/app/globals.css` y `src/app/layout.tsx` |
+| `DATABASE_URL` | Postgres (Neon). Lo crea la integración de Neon en Vercel |
+| `BLOB_READ_WRITE_TOKEN` | Fotos que suben las barberías. Lo crea el almacenamiento Blob de Vercel |
+| `ADMIN_PASSWORD` | Código maestro para crear cuentas de Noir en `/noir/registro` |
+| `SESSION_SECRET` | Firma de las sesiones |
+| `CRON_SECRET` | Protege el cron de recordatorios |
+| `NEXT_PUBLIC_NOIR_WHATSAPP` | WhatsApp de ventas de Noir Studio (con indicativo, sin +) |
 
-## Publicarlo (Vercel + Neon)
-
-1. Crea una base de datos en [Neon](https://neon.tech) y copia la cadena de conexión.
-2. En local, crea `.env` con `DATABASE_URL=...` y ejecuta:
-   ```bash
-   npm run db:migrate              # tablas + datos de ejemplo (demo)
-   npm run db:migrate -- --sin-demo  # tablas + barberos y servicios, sin citas de ejemplo (cliente real)
-   ```
-3. Importa el repositorio en [Vercel](https://vercel.com) y define las variables `DATABASE_URL`, `ADMIN_PASSWORD`, `SESSION_SECRET` y `CRON_SECRET`.
-
-Ver `.env.example` para todas las variables.
+Cada publicación aplica las migraciones de la base de datos antes de compilar (`npm run vercel-build`).
 
 ## Avisos y recordatorios por WhatsApp
 
@@ -74,24 +70,18 @@ Ver `.env.example` para todas las variables.
 - En la confirmación, el cliente toca "Enviar a la barbería" y se abre WhatsApp con los datos de la cita.
 - En la agenda del panel, cada cita tiene botones para recordarle al cliente o al barbero, con el mensaje ya escrito.
 
-**Automático** (API de WhatsApp Cloud de Meta, variables `WHATSAPP_TOKEN` y `WHATSAPP_PHONE_ID`)
-- Al reservar: aviso al número del negocio y al celular del barbero asignado.
-- 2 horas antes de cada cita: recordatorio al cliente y al barbero. Lo envía un cron de Vercel cada 10 minutos (`vercel.json`), protegido con `CRON_SECRET`. El tiempo se cambia en `reservas.recordatorioMin` de `src/config/negocio.ts`.
+**Automático** (API de WhatsApp Cloud de Meta, variables `WHATSAPP_TOKEN` y `WHATSAPP_PHONE_ID`). Un solo número de Noir Studio envía los mensajes de todas las barberías:
+- Al reservar: aviso al WhatsApp de la barbería y al celular del barbero asignado.
+- 2 horas antes de cada cita (solo planes con recordatorios automáticos): recordatorio al cliente y al barbero. Lo envía un cron de Vercel cada 10 minutos (`vercel.json`).
 
 Meta solo entrega mensajes que inicia el negocio si usan **plantillas aprobadas**. Crea estas tres en el WhatsApp Manager (categoría "Utilidad") y pon sus nombres en las variables:
 
 | Variable | Variables de la plantilla, en orden | Ejemplo de texto |
 |---|---|---|
 | `WHATSAPP_PLANTILLA` | cliente, teléfono, servicio, barbero, fecha y hora, código | Nueva cita: {{1}} ({{2}}), {{3}} con {{4}}, {{5}}. Código {{6}}. |
-| `WHATSAPP_PLANTILLA_RECORDATORIO_CLIENTE` | nombre, servicio, barbero, hora, dirección | Hola {{1}}, te recordamos tu cita de {{2}} con {{3}} hoy a las {{4}} en {{5}}. |
+| `WHATSAPP_PLANTILLA_RECORDATORIO_CLIENTE` | nombre, servicio, barbero, hora, barbería y dirección | Hola {{1}}, te recordamos tu cita de {{2}} con {{3}} hoy a las {{4}} en {{5}}. |
 | `WHATSAPP_PLANTILLA_RECORDATORIO_BARBERO` | barbero, cliente, servicio, hora, teléfono | Hola {{1}}, hoy a las {{4}} tienes {{3}} con {{2}} ({{5}}). |
-
-Si falta una plantilla, se envía texto libre, que Meta solo entrega si esa persona escribió al negocio en las últimas 24 horas.
 
 ## Tecnología
 
-Next.js 16 (App Router), Tailwind CSS 4, Motion, Drizzle ORM y Postgres (Neon en producción, PGlite en local).
-
-## Mensaje de venta
-
-> Hola 👋 Somos Noir Studio. Hicimos una web para barberías donde tus clientes reservan solos, eligen barbero y hora, y a ti te llega la cita directo al WhatsApp. Mira el demo: [link]. ¿Te lo muestro en 5 minutos?
+Next.js 16 (App Router), Tailwind CSS 4, Motion, Drizzle ORM, Postgres (Neon en producción, PGlite en local) y Vercel Blob para las fotos.

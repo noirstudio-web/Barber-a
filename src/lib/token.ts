@@ -4,16 +4,16 @@
 export const COOKIE_SESION = "noir_panel";
 export const DURACION_S = 60 * 60 * 24 * 14;
 
-// Código que piden para crear una cuenta en el panel. En producción es ADMIN_PASSWORD;
-// en desarrollo, si no está definido, es "demo".
-export function codigoRegistro(): string | null {
+// Código maestro de Noir Studio: se pide para crear cuentas del panel /noir.
+// En producción es ADMIN_PASSWORD; en desarrollo, si no está definido, es "demo".
+export function codigoMaestro(): string | null {
   if (process.env.ADMIN_PASSWORD) return process.env.ADMIN_PASSWORD;
   return process.env.NODE_ENV === "production" ? null : "demo";
 }
 
 function secreto(): string | null {
   if (process.env.SESSION_SECRET) return process.env.SESSION_SECRET;
-  const codigo = codigoRegistro();
+  const codigo = codigoMaestro();
   return codigo ? `sesion:${codigo}` : null;
 }
 
@@ -30,8 +30,8 @@ export function igualesSeguro(a: string, b: string): boolean {
   return diff === 0;
 }
 
-export async function codigoCorrecto(intento: string): Promise<boolean> {
-  const codigo = codigoRegistro();
+export async function codigoMaestroCorrecto(intento: string): Promise<boolean> {
+  const codigo = codigoMaestro();
   const s = secreto();
   if (!codigo || !s) return false;
   // Compara firmas de igual longitud para no filtrar información por tiempos

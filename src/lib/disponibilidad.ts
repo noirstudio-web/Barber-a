@@ -1,5 +1,5 @@
 import { and, asc, eq, gte, lte, ne } from "drizzle-orm";
-import { horario, reservas } from "@/config/negocio";
+import { reglasReserva as reservas, type Horario } from "@/config/region";
 import type { Db } from "@/db";
 import { barberos, bloqueos, citas, servicios } from "@/db/schema";
 import { ahoraLocal, diaSemana, sumarDias } from "./tiempo";
@@ -33,15 +33,21 @@ export function huecosLibres(
 // barberoId null = cualquier barbero; cada hueco dice qué barberos están libres.
 export async function calcularDisponibilidad(
   db: Consultable,
-  opts: { servicioId: number; barberoId: number | null; desde: string; hasta: string },
+  opts: { barberiaId: number; horario: Horario; servicioId: number; barberoId: number | null; desde: string; hasta: string },
 ): Promise<Disponibilidad> {
-  const [servicio] = await db.select().from(servicios).where(and(eq(servicios.id, opts.servicioId), eq(servicios.activo, true)));
+  const [servicio] = await db.select().from(servicios).where(and(eq(servicios.id, opts.servicioId), eq(servicios.barberiaId, opts.barberiaId), eq(servicios.activo, true)));
   if (!servicio) return {};
 
   const equipo = await db
     .select({ id: barberos.id })
     .from(barberos)
-    .where(opts.barberoId ? and(eq(barberos.id, opts.barberoId), eq(barberos.activo, true)) : eq(barberos.activo, true))
+    .where(
+      and(
+        eq(barberos.barberiaId, opts.barberiaId),
+        eq(barberos.activo, true),
+        opts.barberoId ? eq(barberos.id, opts.barberoId) : undefined,
+      ),
+    )
     .orderBy(asc(barberos.orden));
   if (equipo.length === 0) return {};
 
@@ -49,11 +55,18 @@ export async function calcularDisponibilidad(
     db
       .select({ barberoId: citas.barberoId, fecha: citas.fecha, inicio: citas.inicioMin, fin: citas.finMin })
       .from(citas)
-      .where(and(gte(citas.fecha, opts.desde), lte(citas.fecha, opts.hasta), ne(citas.estado, "cancelada"))),
+      .where(
+        and(
+          eq(citas.barberiaId, opts.barberiaId),
+          gte(citas.fecha, opts.desde),
+          lte(citas.fecha, opts.hasta),
+          ne(citas.estado, "cancelada"),
+        ),
+      ),
     db
       .select()
       .from(bloqueos)
-      .where(and(lte(bloqueos.desde, opts.hasta), gte(bloqueos.hasta, opts.desde))),
+      .where(and(eq(bloqueos.barberiaId, opts.barberiaId), lte(bloqueos.desde, opts.hasta), gte(bloqueos.hasta, opts.desde))),
   ]);
 
   const ahora = ahoraLocal();
@@ -61,7 +74,7 @@ export async function calcularDisponibilidad(
   const resultado: Disponibilidad = {};
 
   for (let fecha = opts.desde; fecha <= opts.hasta; fecha = sumarDias(fecha, 1)) {
-    const jornada = horario[diaSemana(fecha)];
+    const jornada = opts.horario[diaSemana(fecha)];
     if (!jornada || fecha < ahora.fecha || fecha > limite) {
       resultado[fecha] = [];
       continue;

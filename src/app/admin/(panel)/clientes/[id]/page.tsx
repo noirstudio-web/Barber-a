@@ -1,11 +1,12 @@
 import { ArrowLeftIcon, WhatsappLogoIcon } from "@phosphor-icons/react/ssr";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { negocio } from "@/config/negocio";
 import { getDb } from "@/db";
 import { barberos, citas, clientes, servicios } from "@/db/schema";
+import { exigirPanel } from "@/lib/sesion";
 import { fmtFecha, fmtHora, fmtPrecio } from "@/lib/tiempo";
+import { numeroInternacional } from "@/lib/whatsapp";
 import { ESTILO_ESTADO } from "../../estados";
 
 export const dynamic = "force-dynamic";
@@ -13,8 +14,9 @@ export const dynamic = "force-dynamic";
 export default async function PaginaCliente({ params }: PageProps<"/admin/clientes/[id]">) {
   const id = Number((await params).id);
   if (!Number.isInteger(id)) notFound();
+  const { barberia } = await exigirPanel();
   const db = await getDb();
-  const [cliente] = await db.select().from(clientes).where(eq(clientes.id, id));
+  const [cliente] = await db.select().from(clientes).where(and(eq(clientes.id, id), eq(clientes.barberiaId, barberia.id)));
   if (!cliente) notFound();
 
   const historial = await db
@@ -37,7 +39,7 @@ export default async function PaginaCliente({ params }: PageProps<"/admin/client
   const favorito = Object.entries(
     completadas.reduce<Record<string, number>>((m, c) => ({ ...m, [c.barbero]: (m[c.barbero] ?? 0) + 1 }), {}),
   ).sort((a, b) => b[1] - a[1])[0]?.[0];
-  const tel = cliente.telefono.length === 10 ? `${negocio.indicativo}${cliente.telefono}` : cliente.telefono;
+  const tel = numeroInternacional(cliente.telefono);
 
   return (
     <div className="max-w-3xl">

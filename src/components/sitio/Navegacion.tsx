@@ -4,23 +4,22 @@ import { ListIcon, XIcon } from "@phosphor-icons/react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useState } from "react";
 import { BotonEnlace } from "./Boton";
-import { Marca } from "./Marca";
+import { Marca, type DatosMarca } from "./Marca";
 
-const enlaces = [
-  { href: "/#servicios", texto: "Servicios" },
-  { href: "/#barberos", texto: "Barberos" },
-  { href: "/#galeria", texto: "Galería" },
-  { href: "/#ubicacion", texto: "Ubicación" },
-];
-
-export function Navegacion() {
+export function Navegacion({ marca, base, conGaleria }: { marca: DatosMarca; base: string; conGaleria: boolean }) {
+  const enlaces = [
+    { href: `${base}#servicios`, texto: "Servicios" },
+    { href: `${base}#barberos`, texto: "Barberos" },
+    ...(conGaleria ? [{ href: `${base}#galeria`, texto: "Galería" }] : []),
+    { href: `${base}#ubicacion`, texto: "Ubicación" },
+  ];
   const [abierto, setAbierto] = useState(false);
   const reducir = useReducedMotion();
 
   return (
     <header className="sticky top-0 z-40 border-b border-linea bg-fondo/80 backdrop-blur-xl">
       <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 md:px-8">
-        <Marca />
+        <Marca {...marca} />
         <ul className="hidden items-center gap-8 md:flex">
           {enlaces.map((e) => (
             <li key={e.href}>
@@ -31,7 +30,7 @@ export function Navegacion() {
           ))}
         </ul>
         <div className="flex items-center gap-2">
-          <BotonEnlace href="/reservar" className="hidden px-5 py-2.5 sm:inline-flex">
+          <BotonEnlace href={`${base}/reservar`} className="hidden px-5 py-2.5 sm:inline-flex">
             Reservar cita
           </BotonEnlace>
           <button
@@ -62,7 +61,7 @@ export function Navegacion() {
                 </li>
               ))}
             </ul>
-            <BotonEnlace href="/reservar" className="mt-4 w-full">
+            <BotonEnlace href={`${base}/reservar`} className="mt-4 w-full">
               Reservar cita
             </BotonEnlace>
           </motion.div>

@@ -5,14 +5,15 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { reservar } from "@/app/(sitio)/reservar/acciones";
+import { reservar } from "@/app/[slug]/reservar/acciones";
+import { Avatar } from "@/components/sitio/Avatar";
 import { Boton } from "@/components/sitio/Boton";
 import type { Disponibilidad } from "@/lib/disponibilidad";
 import { fmtDuracion, fmtFecha, fmtHora, fmtPrecio } from "@/lib/tiempo";
 import { Calendario } from "./Calendario";
 
 type ServicioUI = { id: number; nombre: string; descripcion: string; duracionMin: number; precio: number };
-type BarberoUI = { id: number; nombre: string; especialidad: string; foto: string };
+type BarberoUI = { id: number; nombre: string; especialidad: string; foto: string | null };
 type Eleccion = number | "cualquiera" | null;
 
 const PASOS = ["Servicio", "Barbero", "Fecha y hora", "Tus datos"];
@@ -25,9 +26,11 @@ type EstadoDispo =
 export function Reservador({
   servicios,
   barberos,
+  slug,
   servicioInicial,
   barberoInicial,
 }: {
+  slug: string;
   servicios: ServicioUI[];
   barberos: BarberoUI[];
   servicioInicial: number | null;
@@ -61,7 +64,7 @@ export function Reservador({
   useEffect(() => {
     if (!clave) return;
     let vigente = true;
-    fetch(`/api/disponibilidad?servicio=${servicioId}&barbero=${barbero}`, { cache: "no-store" })
+    fetch(`/api/disponibilidad?barberia=${slug}&servicio=${servicioId}&barbero=${barbero}`, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : Promise.reject(r)))
       .then((data: { hoy: string; dias: Disponibilidad }) => {
         if (!vigente) return;
@@ -73,7 +76,7 @@ export function Reservador({
     return () => {
       vigente = false;
     };
-  }, [clave, servicioId, barbero]);
+  }, [clave, slug, servicioId, barbero]);
 
   const habilitados = useMemo(
     () => (dispo.tipo === "listo" ? new Set(Object.keys(dispo.dias).filter((f) => dispo.dias[f].length > 0)) : new Set<string>()),
@@ -107,6 +110,7 @@ export function Reservador({
     setError(null);
     iniciar(async () => {
       const r = await reservar({
+        slug,
         servicioId,
         barberoId: barbero === "cualquiera" ? null : barbero,
         fecha,
@@ -115,7 +119,7 @@ export function Reservador({
         telefono,
       });
       if (r.ok) {
-        router.push(`/reserva/${r.codigo}`);
+        router.push(`/${slug}/reserva/${r.codigo}`);
         return;
       }
       setError(r.error);
@@ -218,7 +222,11 @@ export function Reservador({
                         barbero === b.id ? "bg-cromo text-fondo" : "bg-superficie hover:bg-superficie-2"
                       }`}
                     >
-                      <Image src={b.foto} alt="" width={64} height={64} className="size-16 shrink-0 rounded-xl object-cover" />
+                      {b.foto ? (
+                        <Image src={b.foto} alt="" width={64} height={64} className="size-16 shrink-0 rounded-xl object-cover" />
+                      ) : (
+                        <Avatar nombre={b.nombre} className="size-16 shrink-0 rounded-xl text-xl" />
+                      )}
                       <span>
                         <span className="block font-semibold">{b.nombre}</span>
                         <span className={`block text-sm ${barbero === b.id ? "text-fondo/70" : "text-tenue"}`}>{b.especialidad}</span>

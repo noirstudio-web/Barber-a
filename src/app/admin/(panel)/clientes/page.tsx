@@ -1,8 +1,9 @@
 import { MagnifyingGlassIcon } from "@phosphor-icons/react/ssr";
-import { desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import Link from "next/link";
 import { getDb } from "@/db";
 import { citas, clientes } from "@/db/schema";
+import { exigirPanel } from "@/lib/sesion";
 import { ahoraLocal, fmtFecha, fmtPrecio } from "@/lib/tiempo";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +12,7 @@ export default async function PaginaClientes({ searchParams }: PageProps<"/admin
   const { q } = await searchParams;
   const busqueda = typeof q === "string" ? q.trim() : "";
   const hoy = ahoraLocal().fecha;
+  const { barberia } = await exigirPanel();
   const db = await getDb();
 
   const lista = await db
@@ -26,7 +28,12 @@ export default async function PaginaClientes({ searchParams }: PageProps<"/admin
     })
     .from(clientes)
     .leftJoin(citas, eq(citas.clienteId, clientes.id))
-    .where(busqueda ? or(ilike(clientes.nombre, `%${busqueda}%`), ilike(clientes.telefono, `%${busqueda.replace(/\D/g, "") || busqueda}%`)) : undefined)
+    .where(
+      and(
+        eq(clientes.barberiaId, barberia.id),
+        busqueda ? or(ilike(clientes.nombre, `%${busqueda}%`), ilike(clientes.telefono, `%${busqueda.replace(/\D/g, "") || busqueda}%`)) : undefined,
+      ),
+    )
     .groupBy(clientes.id)
     .orderBy(sql`max(${citas.fecha}) desc nulls last`, desc(clientes.creadoEn))
     .limit(200);

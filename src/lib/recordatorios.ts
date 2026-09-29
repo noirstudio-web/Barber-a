@@ -1,7 +1,8 @@
 import { and, eq, gt, inArray, isNull, lte, or } from "drizzle-orm";
-import { reservas } from "@/config/negocio";
+import { reglasReserva as reservas } from "@/config/region";
 import type { Db } from "@/db";
-import { barberos, citas, clientes, servicios } from "@/db/schema";
+import { barberias, barberos, citas, clientes, servicios } from "@/db/schema";
+import { estadoSuscripcion, limitesPlan } from "./barberias";
 import { ahoraLocal, fmtFecha, fmtHora, sumarDias } from "./tiempo";
 import { enviarRecordatorios, whatsappConfigurado } from "./whatsapp";
 
@@ -44,17 +45,23 @@ export async function procesarRecordatorios(db: Db): Promise<{ enviados: number;
       servicio: servicios.nombre,
       barbero: barberos.nombre,
       telefonoBarbero: barberos.telefono,
+      barberia: barberias,
     })
     .from(citas)
+    .innerJoin(barberias, eq(citas.barberiaId, barberias.id))
     .innerJoin(clientes, eq(citas.clienteId, clientes.id))
     .innerJoin(servicios, eq(citas.servicioId, servicios.id))
     .innerJoin(barberos, eq(citas.barberoId, barberos.id))
     .where(inArray(citas.id, ids));
 
+  // Solo las barberías activas con un plan que incluye recordatorios automáticos
+  const aEnviar = filas.filter((f) => estadoSuscripcion(f.barberia).activa && limitesPlan(f.barberia).recordatoriosAutomaticos);
+
   await Promise.all(
-    filas.map((f) =>
+    aEnviar.map((f) =>
       enviarRecordatorios(
         {
+          negocio: { nombre: f.barberia.nombre, direccion: f.barberia.direccion, whatsapp: f.barberia.whatsapp },
           codigo: f.codigo,
           cliente: f.cliente,
           telefono: f.telefono,
@@ -67,5 +74,5 @@ export async function procesarRecordatorios(db: Db): Promise<{ enviados: number;
       ),
     ),
   );
-  return { enviados: filas.length, configurado: true };
+  return { enviados: aEnviar.length, configurado: true };
 }

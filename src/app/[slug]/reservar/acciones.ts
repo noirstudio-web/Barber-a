@@ -6,11 +6,13 @@ import { after } from "next/server";
 import { z } from "zod";
 import { getDb } from "@/db";
 import { barberos, citas, clientes, servicios } from "@/db/schema";
+import { barberiaPorSlug, estadoSuscripcion } from "@/lib/barberias";
 import { calcularDisponibilidad } from "@/lib/disponibilidad";
 import { ahoraLocal, esFechaValida, fmtFecha, fmtHora } from "@/lib/tiempo";
 import { enviarAvisoNuevaCita } from "@/lib/whatsapp";
 
 const esquema = z.object({
+  slug: z.string().min(1).max(60),
   servicioId: z.number().int().positive(),
   barberoId: z.number().int().positive().nullable(),
   fecha: z.string().refine(esFechaValida),
@@ -34,13 +36,17 @@ export async function reservar(datos: DatosReserva): Promise<ResultadoReserva> {
   const parsed = esquema.safeParse(datos);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Revisa los datos" };
   const d = parsed.data;
+  const negocio = await barberiaPorSlug(d.slug);
+  if (!negocio || !estadoSuscripcion(negocio).activa) return { ok: false, error: "Esta barbería no está recibiendo reservas en este momento." };
   const db = await getDb();
 
   const resultado = await db.transaction(async (tx) => {
     // Un candado por día evita que dos personas reserven la misma hora a la vez
-    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${"citas:" + d.fecha}))`);
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`citas:${negocio.id}:${d.fecha}`}))`);
 
     const dispo = await calcularDisponibilidad(tx, {
+      barberiaId: negocio.id,
+      horario: negocio.horario,
       servicioId: d.servicioId,
       barberoId: d.barberoId,
       desde: d.fecha,
@@ -55,7 +61,7 @@ export async function reservar(datos: DatosReserva): Promise<ResultadoReserva> {
       const cargas = await tx
         .select({ barberoId: citas.barberoId, total: sql<number>`count(*)::int` })
         .from(citas)
-        .where(and(eq(citas.fecha, d.fecha), ne(citas.estado, "cancelada")))
+        .where(and(eq(citas.barberiaId, negocio.id), eq(citas.fecha, d.fecha), ne(citas.estado, "cancelada")))
         .groupBy(citas.barberoId);
       const carga = (id: number) => cargas.find((c) => c.barberoId === id)?.total ?? 0;
       barberoId = [...hueco.barberos].sort((a, b) => carga(a) - carga(b))[0];
@@ -66,12 +72,13 @@ export async function reservar(datos: DatosReserva): Promise<ResultadoReserva> {
 
     const [cliente] = await tx
       .insert(clientes)
-      .values({ nombre: d.nombre, telefono: d.telefono })
-      .onConflictDoUpdate({ target: clientes.telefono, set: { nombre: d.nombre } })
+      .values({ barberiaId: negocio.id, nombre: d.nombre, telefono: d.telefono })
+      .onConflictDoUpdate({ target: [clientes.barberiaId, clientes.telefono], set: { nombre: d.nombre } })
       .returning();
 
     const codigo = nuevoCodigo();
     await tx.insert(citas).values({
+      barberiaId: negocio.id,
       codigo,
       clienteId: cliente.id,
       barberoId,
@@ -92,6 +99,7 @@ export async function reservar(datos: DatosReserva): Promise<ResultadoReserva> {
   after(() =>
     enviarAvisoNuevaCita(
       {
+        negocio: { nombre: negocio.nombre, direccion: negocio.direccion, whatsapp: negocio.whatsapp },
         codigo: resultado.codigo,
         cliente: d.nombre,
         telefono: d.telefono,

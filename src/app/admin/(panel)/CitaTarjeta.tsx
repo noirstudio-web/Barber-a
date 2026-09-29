@@ -4,7 +4,7 @@ import { WhatsappLogoIcon } from "@phosphor-icons/react";
 import { useTransition } from "react";
 import type { EstadoCita } from "@/db/schema";
 import { fmtHora } from "@/lib/tiempo";
-import { enlaceWhatsApp, numeroInternacional, textoRecordatorioBarbero, textoRecordatorioCliente } from "@/lib/whatsapp";
+import { enlaceWhatsApp, numeroInternacional, textoRecordatorioBarbero, textoRecordatorioCliente, type DatosNegocio } from "@/lib/whatsapp";
 import { cambiarEstadoCita } from "../acciones";
 import { ESTILO_ESTADO } from "./estados";
 
@@ -29,9 +29,11 @@ const ACCIONES: { estado: EstadoCita; texto: string }[] = [
 export function CitaTarjeta({
   cita,
   barbero,
+  negocio,
   fecha,
   estilo,
 }: {
+  negocio: DatosNegocio;
   cita: CitaAgenda;
   barbero: { nombre: string; telefono: string | null };
   fecha: string;
@@ -40,7 +42,7 @@ export function CitaTarjeta({
   const [pendiente, iniciar] = useTransition();
   const e = ESTILO_ESTADO[cita.estado];
   const duracion = cita.finMin - cita.inicioMin;
-  const datos = { codigo: "", cliente: cita.cliente, telefono: cita.telefono, servicio: cita.servicio, barbero: barbero.nombre, fecha, hora: fmtHora(cita.inicioMin) };
+  const datos = { negocio, codigo: "", cliente: cita.cliente, telefono: cita.telefono, servicio: cita.servicio, barbero: barbero.nombre, fecha, hora: fmtHora(cita.inicioMin) };
 
   return (
     <details

@@ -1,7 +1,8 @@
 import { TrashIcon } from "@phosphor-icons/react/ssr";
-import { asc, eq, gte } from "drizzle-orm";
+import { and, asc, eq, gte } from "drizzle-orm";
 import { getDb } from "@/db";
 import { barberos, bloqueos } from "@/db/schema";
+import { exigirPanel } from "@/lib/sesion";
 import { ahoraLocal, fmtFecha, fmtHora } from "@/lib/tiempo";
 import { eliminarBloqueo } from "../../acciones";
 import { FormularioBloqueo } from "./FormularioBloqueo";
@@ -9,11 +10,12 @@ import { FormularioBloqueo } from "./FormularioBloqueo";
 export const dynamic = "force-dynamic";
 
 export default async function PaginaBloqueos() {
+  const { barberia } = await exigirPanel();
   const db = await getDb();
   const hoy = ahoraLocal().fecha;
   const [equipo, lista] = await Promise.all([
-    db.select({ id: barberos.id, nombre: barberos.nombre }).from(barberos).where(eq(barberos.activo, true)).orderBy(asc(barberos.orden)),
-    db.select().from(bloqueos).where(gte(bloqueos.hasta, hoy)).orderBy(asc(bloqueos.desde), asc(bloqueos.inicioMin)),
+    db.select({ id: barberos.id, nombre: barberos.nombre }).from(barberos).where(and(eq(barberos.barberiaId, barberia.id), eq(barberos.activo, true))).orderBy(asc(barberos.orden)),
+    db.select().from(bloqueos).where(and(eq(bloqueos.barberiaId, barberia.id), gte(bloqueos.hasta, hoy))).orderBy(asc(bloqueos.desde), asc(bloqueos.inicioMin)),
   ]);
   const nombre = (id: number | null) => (id === null ? "Toda la barbería" : (equipo.find((b) => b.id === id)?.nombre ?? "Barbero inactivo"));
   const corta = (f: string) => fmtFecha(f, { weekday: "short", day: "numeric", month: "short" });

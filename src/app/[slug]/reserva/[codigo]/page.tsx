@@ -1,11 +1,11 @@
 import { CalendarPlusIcon, CheckCircleIcon, ProhibitIcon, WhatsappLogoIcon } from "@phosphor-icons/react/ssr";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { BotonEnlace, BotonExterno } from "@/components/sitio/Boton";
-import { negocio } from "@/config/negocio";
+import { region } from "@/config/region";
 import { getDb } from "@/db";
-import { barberos, citas, clientes, servicios } from "@/db/schema";
+import { barberias, barberos, citas, clientes, servicios } from "@/db/schema";
 import { ahoraLocal, fmtFecha, fmtHora, fmtPrecio, minutosAHora } from "@/lib/tiempo";
 import { enlaceWhatsApp, textoAvisoCita } from "@/lib/whatsapp";
 import { CancelarCita } from "./CancelarCita";
@@ -13,19 +13,20 @@ import { CancelarCita } from "./CancelarCita";
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Tu cita", robots: { index: false } };
 
-export default async function PaginaCita({ params }: PageProps<"/reserva/[codigo]">) {
-  const { codigo } = await params;
+export default async function PaginaCita({ params }: PageProps<"/[slug]/reserva/[codigo]">) {
+  const { codigo, slug } = await params;
   const db = await getDb();
   const [fila] = await db
-    .select({ cita: citas, cliente: clientes, barbero: barberos, servicio: servicios })
+    .select({ cita: citas, cliente: clientes, barbero: barberos, servicio: servicios, negocio: barberias })
     .from(citas)
     .innerJoin(clientes, eq(citas.clienteId, clientes.id))
     .innerJoin(barberos, eq(citas.barberoId, barberos.id))
     .innerJoin(servicios, eq(citas.servicioId, servicios.id))
-    .where(eq(citas.codigo, codigo.toUpperCase()));
+    .innerJoin(barberias, eq(citas.barberiaId, barberias.id))
+    .where(and(eq(citas.codigo, codigo.toUpperCase()), eq(barberias.slug, slug)));
   if (!fila) notFound();
 
-  const { cita, cliente, barbero, servicio } = fila;
+  const { cita, cliente, barbero, servicio, negocio } = fila;
   const fecha = fmtFecha(cita.fecha);
   const hora = fmtHora(cita.inicioMin);
   const cancelada = cita.estado === "cancelada";
@@ -33,6 +34,7 @@ export default async function PaginaCita({ params }: PageProps<"/reserva/[codigo
   const futura = cita.fecha > ahora.fecha || (cita.fecha === ahora.fecha && cita.inicioMin > ahora.minutos);
 
   const aviso = textoAvisoCita({
+    negocio: { nombre: negocio.nombre, direccion: negocio.direccion, whatsapp: negocio.whatsapp },
     codigo: cita.codigo,
     cliente: cliente.nombre,
     telefono: cliente.telefono,
@@ -46,7 +48,7 @@ export default async function PaginaCita({ params }: PageProps<"/reserva/[codigo
     "https://calendar.google.com/calendar/render?action=TEMPLATE" +
     `&text=${encodeURIComponent(`${servicio.nombre} en ${negocio.nombre}`)}` +
     `&dates=${f}T${minutosAHora(cita.inicioMin).replace(":", "")}00/${f}T${minutosAHora(cita.finMin).replace(":", "")}00` +
-    `&ctz=${encodeURIComponent(negocio.zonaHoraria)}` +
+    `&ctz=${encodeURIComponent(region.zonaHoraria)}` +
     `&details=${encodeURIComponent(`Con ${barbero.nombre}. Código ${cita.codigo}.`)}` +
     `&location=${encodeURIComponent(negocio.direccion)}`;
 
@@ -93,7 +95,7 @@ export default async function PaginaCita({ params }: PageProps<"/reserva/[codigo
 
       {!cancelada && futura && (
         <div className="mt-8 flex flex-wrap gap-3">
-          <BotonExterno href={enlaceWhatsApp(aviso)}>
+          <BotonExterno href={enlaceWhatsApp(aviso, negocio.whatsapp)}>
             <WhatsappLogoIcon size={18} weight="fill" /> Enviar a la barbería
           </BotonExterno>
           <BotonExterno href={calendario} variante="secundario">
@@ -103,7 +105,7 @@ export default async function PaginaCita({ params }: PageProps<"/reserva/[codigo
       )}
 
       <div className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-linea pt-6">
-        <BotonEnlace href="/" variante="secundario">
+        <BotonEnlace href={`/${negocio.slug}`} variante="secundario">
           Volver al inicio
         </BotonEnlace>
         {!cancelada && futura && <CancelarCita codigo={cita.codigo} />}

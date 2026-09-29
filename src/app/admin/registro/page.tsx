@@ -1,45 +1,41 @@
-import { count } from "drizzle-orm";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Marca } from "@/components/sitio/Marca";
-import { getDb } from "@/db";
-import { usuarios } from "@/db/schema";
-import { codigoRegistro } from "@/lib/token";
-import { FormularioRegistro } from "./FormularioRegistro";
+import { Marca, marcaNoir } from "@/components/sitio/Marca";
+import { noir } from "@/config/noir";
+import { enlaceWhatsApp } from "@/lib/whatsapp";
+import { FormularioActivacion } from "./FormularioActivacion";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Crear usuario", robots: { index: false } };
+export const metadata: Metadata = { title: "Activa tu barbería", robots: { index: false } };
 
-export default async function PaginaRegistro() {
-  const db = await getDb();
-  const [{ total }] = await db.select({ total: count() }).from(usuarios);
-  const primero = total === 0;
-  const esDemo = !process.env.ADMIN_PASSWORD && codigoRegistro() !== null;
-
+export default async function PaginaActivacion({ searchParams }: PageProps<"/admin/registro">) {
+  const { codigo } = await searchParams;
   return (
-    <div className="grid min-h-dvh place-items-center px-4 py-12">
-      <div className="w-full max-w-sm">
-        <Marca />
-        <h1 className="mt-8 text-2xl font-semibold">{primero ? "Crea la cuenta del dueño" : "Crea tu usuario"}</h1>
-        <p className="mt-2 text-sm text-tenue">
-          {primero
-            ? "Es la primera cuenta del panel. Podrás ver y administrar los usuarios del equipo."
-            : "Pide el código del negocio al dueño de la barbería."}
+    <div className="mx-auto max-w-xl px-4 py-12 md:py-16">
+      <Marca {...marcaNoir} />
+      <h1 className="display mt-10 text-3xl font-semibold">Activa tu barbería</h1>
+      <p className="mt-3 text-tenue">
+        Escribe el código que te enviamos por WhatsApp y crea tu cuenta. Tu web queda lista al instante y la puedes editar desde el panel.
+      </p>
+      <FormularioActivacion codigoInicial={typeof codigo === "string" ? codigo : ""} />
+      <div className="mt-10 space-y-2 border-t border-linea pt-6 text-sm text-tenue">
+        <p>
+          ¿Aún no tienes código?{" "}
+          <a
+            href={enlaceWhatsApp("Hola Noir Studio, quiero la web de reservas para mi barbería.", noir.whatsapp)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-texto underline underline-offset-4"
+          >
+            Escríbenos por WhatsApp
+          </a>
         </p>
-        {codigoRegistro() ? (
-          <FormularioRegistro />
-        ) : (
-          <p className="mt-4 text-sm text-tenue">El registro no está configurado. Define ADMIN_PASSWORD en las variables de entorno.</p>
-        )}
-        {esDemo && <p className="mt-6 rounded-xl bg-superficie px-4 py-3 text-sm text-tenue">Modo local: el código del negocio es <strong className="text-texto">demo</strong></p>}
-        {!primero && (
-          <p className="mt-6 text-sm text-tenue">
-            ¿Ya tienes usuario?{" "}
-            <Link href="/admin/login" className="text-texto underline underline-offset-4">
-              Entra aquí
-            </Link>
-          </p>
-        )}
+        <p>
+          ¿Ya tienes cuenta?{" "}
+          <Link href="/admin/login" className="text-texto underline underline-offset-4">
+            Entra aquí
+          </Link>
+        </p>
       </div>
     </div>
   );

@@ -1,11 +1,11 @@
 import { WhatsappLogoIcon } from "@phosphor-icons/react/ssr";
-import { negocio } from "@/config/negocio";
 import { enlaceWhatsApp } from "@/lib/whatsapp";
 
-export function WhatsAppFlotante() {
+export function WhatsAppFlotante({ numero, texto }: { numero: string; texto: string }) {
+  if (!numero) return null;
   return (
     <a
-      href={enlaceWhatsApp(`Hola ${negocio.nombre}, tengo una pregunta.`)}
+      href={enlaceWhatsApp(texto, numero)}
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Escribir por WhatsApp"

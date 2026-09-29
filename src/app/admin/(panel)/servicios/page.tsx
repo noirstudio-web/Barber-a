@@ -1,13 +1,15 @@
-import { asc } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { servicios } from "@/db/schema";
+import { exigirPanel } from "@/lib/sesion";
 import { FormularioServicio } from "./FormularioServicio";
 
 export const dynamic = "force-dynamic";
 
 export default async function PaginaServicios() {
+  const { barberia } = await exigirPanel();
   const db = await getDb();
-  const lista = await db.select().from(servicios).orderBy(asc(servicios.orden), asc(servicios.id));
+  const lista = await db.select().from(servicios).where(eq(servicios.barberiaId, barberia.id)).orderBy(asc(servicios.orden), asc(servicios.id));
 
   return (
     <div className="max-w-4xl">

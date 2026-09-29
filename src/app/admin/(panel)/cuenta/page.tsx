@@ -1,17 +1,19 @@
-import { asc } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { usuarios } from "@/db/schema";
-import { exigirAdmin } from "@/lib/sesion";
+import { exigirPanel } from "@/lib/sesion";
 import { fmtFecha } from "@/lib/tiempo";
 import { eliminarUsuario, hacerDueno } from "../../acciones";
 import { FormularioClave } from "./FormularioClave";
+import { FormularioUsuario } from "./FormularioUsuario";
 
 export const dynamic = "force-dynamic";
 
 export default async function PaginaCuenta() {
-  const yo = await exigirAdmin();
+  const { usuario: yo, barberia } = await exigirPanel({ permitirVencida: true });
   const db = await getDb();
-  const equipo = yo.rol === "dueno" ? await db.select().from(usuarios).orderBy(asc(usuarios.creadoEn)) : [];
+  const equipo =
+    yo.rol === "dueno" ? await db.select().from(usuarios).where(eq(usuarios.barberiaId, barberia.id)).orderBy(asc(usuarios.creadoEn)) : [];
 
   return (
     <div className="grid gap-10 lg:grid-cols-12">
@@ -27,9 +29,8 @@ export default async function PaginaCuenta() {
       {yo.rol === "dueno" && (
         <section className="lg:col-span-7">
           <h2 className="text-lg font-semibold">Usuarios del panel</h2>
-          <p className="mt-1 text-sm text-tenue">
-            Cada persona crea su usuario en <span className="text-texto">/admin/registro</span> con el código del negocio.
-          </p>
+          <p className="mt-1 text-sm text-tenue">Crea aquí la cuenta de cada persona de tu equipo y pásale su usuario y contraseña.</p>
+          <FormularioUsuario />
           <ul className="mt-4 space-y-2">
             {equipo.map((u) => (
               <li key={u.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-superficie px-4 py-3 text-sm">

@@ -1,10 +1,10 @@
-import { negocio } from "@/config/negocio";
+import { region } from "@/config/region";
 
 // Fechas como texto "YYYY-MM-DD" en la hora local del negocio; horas como minutos desde medianoche.
 
 export function ahoraLocal(): { fecha: string; minutos: number } {
   const partes = new Intl.DateTimeFormat("en-CA", {
-    timeZone: negocio.zonaHoraria,
+    timeZone: region.zonaHoraria,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -62,13 +62,13 @@ export function minutosAHora(minutos: number): string {
 }
 
 export function fmtFecha(fecha: string, opciones: Intl.DateTimeFormatOptions = { weekday: "long", day: "numeric", month: "long" }): string {
-  return new Intl.DateTimeFormat(negocio.locale, { ...opciones, timeZone: "UTC" }).format(aUTC(fecha));
+  return new Intl.DateTimeFormat(region.locale, { ...opciones, timeZone: "UTC" }).format(aUTC(fecha));
 }
 
 export function fmtPrecio(valor: number): string {
-  return new Intl.NumberFormat(negocio.locale, {
+  return new Intl.NumberFormat(region.locale, {
     style: "currency",
-    currency: negocio.moneda,
+    currency: region.moneda,
     maximumFractionDigits: 0,
   }).format(valor);
 }

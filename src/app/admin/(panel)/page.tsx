@@ -1,10 +1,12 @@
 import { CaretLeftIcon, CaretRightIcon } from "@phosphor-icons/react/ssr";
 import { and, asc, eq, gte, lte, sql } from "drizzle-orm";
 import Link from "next/link";
-import { horario } from "@/config/negocio";
+import type { Horario } from "@/config/region";
 import { getDb } from "@/db";
 import { barberos, bloqueos, citas, clientes, type EstadoCita, servicios } from "@/db/schema";
+import { exigirPanel } from "@/lib/sesion";
 import { ahoraLocal, diaSemana, esFechaValida, fmtFecha, fmtHora, fmtPrecio, inicioSemana, sumarDias } from "@/lib/tiempo";
+import type { DatosNegocio } from "@/lib/whatsapp";
 import { CitaTarjeta } from "./CitaTarjeta";
 import { ESTILO_ESTADO } from "./estados";
 
@@ -20,9 +22,14 @@ export default async function Agenda({ searchParams }: PageProps<"/admin">) {
   const desde = vista === "semana" ? inicioSemana(fecha) : fecha;
   const hasta = vista === "semana" ? sumarDias(desde, 6) : fecha;
 
+  const { barberia } = await exigirPanel();
   const db = await getDb();
   const [equipo, filas, bloqs] = await Promise.all([
-    db.select().from(barberos).where(eq(barberos.activo, true)).orderBy(asc(barberos.orden)),
+    db
+      .select()
+      .from(barberos)
+      .where(and(eq(barberos.barberiaId, barberia.id), eq(barberos.activo, true)))
+      .orderBy(asc(barberos.orden)),
     db
       .select({
         id: citas.id,
@@ -40,9 +47,12 @@ export default async function Agenda({ searchParams }: PageProps<"/admin">) {
       .from(citas)
       .innerJoin(clientes, eq(citas.clienteId, clientes.id))
       .innerJoin(servicios, eq(citas.servicioId, servicios.id))
-      .where(and(gte(citas.fecha, desde), lte(citas.fecha, hasta)))
+      .where(and(eq(citas.barberiaId, barberia.id), gte(citas.fecha, desde), lte(citas.fecha, hasta)))
       .orderBy(asc(citas.fecha), asc(citas.inicioMin)),
-    db.select().from(bloqueos).where(and(lte(bloqueos.desde, hasta), gte(bloqueos.hasta, desde))),
+    db
+      .select()
+      .from(bloqueos)
+      .where(and(eq(bloqueos.barberiaId, barberia.id), lte(bloqueos.desde, hasta), gte(bloqueos.hasta, desde))),
   ]);
 
   const activas = filas.filter((c) => c.estado !== "cancelada");
@@ -99,9 +109,9 @@ export default async function Agenda({ searchParams }: PageProps<"/admin">) {
       </div>
 
       {vista === "dia" ? (
-        <VistaDia fecha={fecha} equipo={equipo} citas={filas} bloqueos={bloqs} ahora={fecha === hoy.fecha ? hoy.minutos : null} />
+        <VistaDia horario={barberia.horario} negocio={{ nombre: barberia.nombre, direccion: barberia.direccion, whatsapp: barberia.whatsapp }} fecha={fecha} equipo={equipo} citas={filas} bloqueos={bloqs} ahora={fecha === hoy.fecha ? hoy.minutos : null} />
       ) : (
-        <VistaSemana desde={desde} hoy={hoy.fecha} equipo={equipo} citas={filas} bloqueos={bloqs} />
+        <VistaSemana horario={barberia.horario} desde={desde} hoy={hoy.fecha} equipo={equipo} citas={filas} bloqueos={bloqs} />
       )}
 
       <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-xs text-tenue">
@@ -135,12 +145,16 @@ function bloqueosDe(bloqs: FilaBloqueo[], barberoId: number, fecha: string) {
 }
 
 function VistaDia({
+  horario,
+  negocio,
   fecha,
   equipo,
   citas: lista,
   bloqueos: bloqs,
   ahora,
 }: {
+  horario: Horario;
+  negocio: DatosNegocio;
   fecha: string;
   equipo: Barbero[];
   citas: FilaCita[];
@@ -200,6 +214,7 @@ function VistaDia({
                   key={c.id}
                   cita={c}
                   barbero={{ nombre: b.nombre, telefono: b.telefono }}
+                  negocio={negocio}
                   fecha={fmtFecha(fecha)}
                   estilo={{ top: (c.inicioMin - abre) * PX_POR_MIN + 1, height: (c.finMin - c.inicioMin) * PX_POR_MIN - 2 }}
                 />
@@ -215,12 +230,14 @@ function VistaDia({
 }
 
 function VistaSemana({
+  horario,
   desde,
   hoy,
   equipo,
   citas: lista,
   bloqueos: bloqs,
 }: {
+  horario: Horario;
   desde: string;
   hoy: string;
   equipo: Barbero[];
