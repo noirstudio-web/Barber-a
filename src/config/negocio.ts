@@ -45,6 +45,8 @@ export const reservas = {
   antelacionMin: 60,
   // Hasta cuántos días hacia adelante se puede reservar
   diasMaximos: 30,
+  // Minutos antes de la cita en que se envía el recordatorio por WhatsApp
+  recordatorioMin: 120,
 };
 
 export const nombresDias = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];

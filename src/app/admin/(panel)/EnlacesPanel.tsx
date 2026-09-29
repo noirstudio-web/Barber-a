@@ -7,6 +7,7 @@ const enlaces = [
   { href: "/admin", texto: "Agenda" },
   { href: "/admin/bloqueos", texto: "Bloqueos" },
   { href: "/admin/servicios", texto: "Servicios" },
+  { href: "/admin/barberos", texto: "Barberos" },
   { href: "/admin/clientes", texto: "Clientes" },
 ];
 

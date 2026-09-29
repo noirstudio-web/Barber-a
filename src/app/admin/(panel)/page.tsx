@@ -1,5 +1,5 @@
 import { CaretLeftIcon, CaretRightIcon } from "@phosphor-icons/react/ssr";
-import { and, asc, eq, gte, lte } from "drizzle-orm";
+import { and, asc, eq, gte, lte, sql } from "drizzle-orm";
 import Link from "next/link";
 import { horario } from "@/config/negocio";
 import { getDb } from "@/db";
@@ -32,6 +32,7 @@ export default async function Agenda({ searchParams }: PageProps<"/admin">) {
         finMin: citas.finMin,
         estado: citas.estado,
         precio: citas.precio,
+        recordado: sql<boolean>`${citas.recordatorioEnviado} is not null`,
         cliente: clientes.nombre,
         telefono: clientes.telefono,
         servicio: servicios.nombre,
@@ -121,6 +122,7 @@ type FilaCita = {
   inicioMin: number;
   finMin: number;
   estado: EstadoCita;
+  recordado: boolean;
   cliente: string;
   telefono: string;
   servicio: string;
@@ -197,6 +199,8 @@ function VistaDia({
                 <CitaTarjeta
                   key={c.id}
                   cita={c}
+                  barbero={{ nombre: b.nombre, telefono: b.telefono }}
+                  fecha={fmtFecha(fecha)}
                   estilo={{ top: (c.inicioMin - abre) * PX_POR_MIN + 1, height: (c.finMin - c.inicioMin) * PX_POR_MIN - 2 }}
                 />
               ))}

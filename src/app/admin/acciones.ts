@@ -1,22 +1,92 @@
 "use server";
 
-import { eq, sql } from "drizzle-orm";
+import { and, count, eq, ne, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getDb } from "@/db";
-import { bloqueos, citas, ESTADOS_CITA, servicios } from "@/db/schema";
-import { borrarSesion, exigirAdmin, guardarSesion } from "@/lib/sesion";
+import { barberos, bloqueos, citas, ESTADOS_CITA, servicios, usuarios } from "@/db/schema";
+import { borrarSesion, exigirAdmin, exigirDueno, guardarSesion, hashClave, verificarClave } from "@/lib/sesion";
 import { esFechaValida, horaAMinutos } from "@/lib/tiempo";
-import { claveCorrecta } from "@/lib/token";
+import { codigoCorrecto } from "@/lib/token";
 
-export type EstadoFormulario = { error?: string; ok?: string };
+// valores: lo que escribió la persona, para no borrarlo si hay un error
+export type EstadoFormulario = { error?: string; ok?: string; valores?: Record<string, string> };
+
+// Hash fijo para comparar aunque el usuario no exista y no revelar cuáles existen por el tiempo de respuesta
+let hashFicticio: Promise<string> | null = null;
 
 export async function iniciarSesion(_: EstadoFormulario, form: FormData): Promise<EstadoFormulario> {
+  const usuario = String(form.get("usuario") ?? "").trim().toLowerCase();
   const clave = String(form.get("clave") ?? "");
-  if (!(await claveCorrecta(clave))) return { error: "Clave incorrecta." };
-  await guardarSesion();
+  const db = await getDb();
+  const [u] = await db.select().from(usuarios).where(eq(usuarios.usuario, usuario));
+  hashFicticio ??= hashClave("clave-inexistente");
+  const valida = await verificarClave(clave, u?.claveHash ?? (await hashFicticio));
+  if (!u || !valida) return { error: "Usuario o contraseña incorrectos.", valores: { usuario } };
+  await guardarSesion(u.id);
   redirect("/admin");
+}
+
+const esquemaUsuario = z.object({
+  nombre: z.string().trim().min(2, "Escribe tu nombre").max(60),
+  usuario: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .regex(/^[a-z0-9._-]{3,30}$/, "El usuario debe tener de 3 a 30 letras, números, punto, guion o guion bajo, sin espacios"),
+  clave: z.string().min(8, "La contraseña debe tener al menos 8 caracteres").max(100),
+});
+
+export async function registrarse(_: EstadoFormulario, form: FormData): Promise<EstadoFormulario> {
+  const valores = { nombre: String(form.get("nombre") ?? ""), usuario: String(form.get("usuario") ?? "") };
+  if (!(await codigoCorrecto(String(form.get("codigo") ?? "")))) return { error: "El código del negocio no es correcto.", valores };
+  const parsed = esquemaUsuario.safeParse({ nombre: form.get("nombre"), usuario: form.get("usuario"), clave: form.get("clave") });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Revisa los datos", valores };
+  if (form.get("clave") !== form.get("clave2")) return { error: "Las contraseñas no coinciden.", valores };
+
+  const db = await getDb();
+  const [{ total }] = await db.select({ total: count() }).from(usuarios);
+  const creado = await db
+    .insert(usuarios)
+    .values({
+      nombre: parsed.data.nombre,
+      usuario: parsed.data.usuario,
+      claveHash: await hashClave(parsed.data.clave),
+      // El primer usuario administra a los demás
+      rol: total === 0 ? "dueno" : "equipo",
+    })
+    .onConflictDoNothing()
+    .returning({ id: usuarios.id });
+  if (creado.length === 0) return { error: "Ese usuario ya existe. Elige otro.", valores };
+  await guardarSesion(creado[0].id);
+  redirect("/admin");
+}
+
+export async function cambiarClave(_: EstadoFormulario, form: FormData): Promise<EstadoFormulario> {
+  const yo = await exigirAdmin();
+  if (!(await verificarClave(String(form.get("actual") ?? ""), yo.claveHash))) return { error: "La contraseña actual no es correcta." };
+  const nueva = String(form.get("nueva") ?? "");
+  if (nueva.length < 8) return { error: "La nueva contraseña debe tener al menos 8 caracteres." };
+  if (nueva !== form.get("nueva2")) return { error: "Las contraseñas nuevas no coinciden." };
+  const db = await getDb();
+  await db.update(usuarios).set({ claveHash: await hashClave(nueva) }).where(eq(usuarios.id, yo.id));
+  return { ok: "Contraseña actualizada." };
+}
+
+export async function eliminarUsuario(id: number) {
+  const yo = await exigirDueno();
+  if (id === yo.id) return;
+  const db = await getDb();
+  await db.delete(usuarios).where(and(eq(usuarios.id, id), ne(usuarios.rol, "dueno")));
+  revalidatePath("/admin/cuenta");
+}
+
+export async function hacerDueno(id: number) {
+  await exigirDueno();
+  const db = await getDb();
+  await db.update(usuarios).set({ rol: "dueno" }).where(eq(usuarios.id, id));
+  revalidatePath("/admin/cuenta");
 }
 
 export async function cerrarSesion() {
@@ -118,5 +188,41 @@ export async function alternarServicio(id: number, activo: boolean) {
   await exigirAdmin();
   const db = await getDb();
   await db.update(servicios).set({ activo }).where(eq(servicios.id, id));
+  revalidatePath("/", "layout");
+}
+
+const esquemaBarbero = z.object({
+  id: z.coerce.number().int().positive(),
+  nombre: z.string().trim().min(2, "El nombre es muy corto").max(60),
+  especialidad: z.string().trim().min(2, "Escribe la especialidad").max(80),
+  telefono: z
+    .string()
+    .transform((t) => t.replace(/[^\d]/g, ""))
+    .refine((t) => t === "" || (t.length >= 7 && t.length <= 15), "Escribe un celular válido o déjalo vacío"),
+});
+
+export async function guardarBarbero(_: EstadoFormulario, form: FormData): Promise<EstadoFormulario> {
+  await exigirAdmin();
+  const parsed = esquemaBarbero.safeParse({
+    id: form.get("id"),
+    nombre: form.get("nombre"),
+    especialidad: form.get("especialidad"),
+    telefono: String(form.get("telefono") ?? ""),
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Revisa los datos" };
+  const { id, telefono, ...datos } = parsed.data;
+  const db = await getDb();
+  await db
+    .update(barberos)
+    .set({ ...datos, telefono: telefono || null })
+    .where(eq(barberos.id, id));
+  revalidatePath("/", "layout");
+  return { ok: "Guardado." };
+}
+
+export async function alternarBarbero(id: number, activo: boolean) {
+  await exigirAdmin();
+  const db = await getDb();
+  await db.update(barberos).set({ activo }).where(eq(barberos.id, id));
   revalidatePath("/", "layout");
 }

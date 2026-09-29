@@ -8,7 +8,7 @@ import { getDb } from "@/db";
 import { barberos, citas, clientes, servicios } from "@/db/schema";
 import { calcularDisponibilidad } from "@/lib/disponibilidad";
 import { ahoraLocal, esFechaValida, fmtFecha, fmtHora } from "@/lib/tiempo";
-import { enviarAvisoWhatsApp } from "@/lib/whatsapp";
+import { enviarAvisoNuevaCita } from "@/lib/whatsapp";
 
 const esquema = z.object({
   servicioId: z.number().int().positive(),
@@ -81,23 +81,27 @@ export async function reservar(datos: DatosReserva): Promise<ResultadoReserva> {
       finMin: d.inicio + servicio.duracionMin,
       precio: servicio.precio,
     });
-    return { codigo, servicio: servicio.nombre, barbero: barbero.nombre };
+    return { codigo, servicio: servicio.nombre, barbero: barbero.nombre, telefonoBarbero: barbero.telefono };
   });
 
   if (!resultado) {
     return { ok: false, error: "Esa hora acaba de ocuparse. Elige otra, por favor.", horaOcupada: true };
   }
 
+  // El aviso sale después de responder, para no demorar la confirmación
   after(() =>
-    enviarAvisoWhatsApp({
-      codigo: resultado.codigo,
-      cliente: d.nombre,
-      telefono: d.telefono,
-      servicio: resultado.servicio,
-      barbero: resultado.barbero,
-      fecha: fmtFecha(d.fecha),
-      hora: fmtHora(d.inicio),
-    }),
+    enviarAvisoNuevaCita(
+      {
+        codigo: resultado.codigo,
+        cliente: d.nombre,
+        telefono: d.telefono,
+        servicio: resultado.servicio,
+        barbero: resultado.barbero,
+        fecha: fmtFecha(d.fecha),
+        hora: fmtHora(d.inicio),
+      },
+      resultado.telefonoBarbero,
+    ),
   );
 
   return { ok: true, codigo: resultado.codigo };

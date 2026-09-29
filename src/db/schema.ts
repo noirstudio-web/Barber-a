@@ -9,6 +9,8 @@ export const barberos = pgTable("barberos", {
   especialidad: text("especialidad").notNull(),
   estilo: text("estilo").notNull(),
   foto: text("foto").notNull(),
+  // Celular del barbero para avisos por WhatsApp (formato internacional, solo dígitos)
+  telefono: text("telefono"),
   activo: boolean("activo").notNull().default(true),
   orden: integer("orden").notNull().default(0),
 });
@@ -57,6 +59,8 @@ export const citas = pgTable(
     // Copia del precio al momento de reservar, por si luego cambia el servicio
     precio: integer("precio").notNull(),
     estado: text("estado").$type<EstadoCita>().notNull().default("confirmada"),
+    // Cuándo se envió el recordatorio previo a la cita (null = pendiente)
+    recordatorioEnviado: timestamp("recordatorio_enviado", { withTimezone: true }),
     creadoEn: timestamp("creado_en", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -79,6 +83,24 @@ export const bloqueos = pgTable("bloqueos", {
   creadoEn: timestamp("creado_en", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const ROLES = ["dueno", "equipo"] as const;
+export type Rol = (typeof ROLES)[number];
+
+// Usuarios del panel. El primero en registrarse queda como dueño.
+export const usuarios = pgTable(
+  "usuarios",
+  {
+    id: serial("id").primaryKey(),
+    nombre: text("nombre").notNull(),
+    usuario: text("usuario").notNull(),
+    claveHash: text("clave_hash").notNull(),
+    rol: text("rol").$type<Rol>().notNull().default("equipo"),
+    creadoEn: timestamp("creado_en", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("usuarios_usuario_idx").on(t.usuario)],
+);
+
+export type Usuario = typeof usuarios.$inferSelect;
 export type Barbero = typeof barberos.$inferSelect;
 export type Servicio = typeof servicios.$inferSelect;
 export type Cita = typeof citas.$inferSelect;

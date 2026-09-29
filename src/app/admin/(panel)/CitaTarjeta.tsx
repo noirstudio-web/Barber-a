@@ -2,9 +2,9 @@
 
 import { WhatsappLogoIcon } from "@phosphor-icons/react";
 import { useTransition } from "react";
-import { negocio } from "@/config/negocio";
 import type { EstadoCita } from "@/db/schema";
 import { fmtHora } from "@/lib/tiempo";
+import { enlaceWhatsApp, numeroInternacional, textoRecordatorioBarbero, textoRecordatorioCliente } from "@/lib/whatsapp";
 import { cambiarEstadoCita } from "../acciones";
 import { ESTILO_ESTADO } from "./estados";
 
@@ -13,6 +13,7 @@ export type CitaAgenda = {
   inicioMin: number;
   finMin: number;
   estado: EstadoCita;
+  recordado: boolean;
   cliente: string;
   telefono: string;
   servicio: string;
@@ -25,11 +26,21 @@ const ACCIONES: { estado: EstadoCita; texto: string }[] = [
   { estado: "confirmada", texto: "Confirmada" },
 ];
 
-export function CitaTarjeta({ cita, estilo }: { cita: CitaAgenda; estilo?: React.CSSProperties }) {
+export function CitaTarjeta({
+  cita,
+  barbero,
+  fecha,
+  estilo,
+}: {
+  cita: CitaAgenda;
+  barbero: { nombre: string; telefono: string | null };
+  fecha: string;
+  estilo?: React.CSSProperties;
+}) {
   const [pendiente, iniciar] = useTransition();
   const e = ESTILO_ESTADO[cita.estado];
   const duracion = cita.finMin - cita.inicioMin;
-  const tel = cita.telefono.length === 10 ? `${negocio.indicativo}${cita.telefono}` : cita.telefono;
+  const datos = { codigo: "", cliente: cita.cliente, telefono: cita.telefono, servicio: cita.servicio, barbero: barbero.nombre, fecha, hora: fmtHora(cita.inicioMin) };
 
   return (
     <details
@@ -73,8 +84,33 @@ export function CitaTarjeta({ cita, estilo }: { cita: CitaAgenda; estilo?: React
             </button>
           ))}
         </div>
+        {cita.estado === "confirmada" && (
+          <div className="space-y-1 border-t border-linea pt-2">
+            <p className="text-tenue">{cita.recordado ? "Recordatorio automático enviado" : "Recordar por WhatsApp"}</p>
+            <div className="flex flex-wrap gap-1">
+              <a
+                href={enlaceWhatsApp(textoRecordatorioCliente(datos), numeroInternacional(cita.telefono))}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 rounded-full border border-linea px-2.5 py-1 transition hover:bg-white/10"
+              >
+                <WhatsappLogoIcon size={14} /> Al cliente
+              </a>
+              {barbero.telefono && (
+                <a
+                  href={enlaceWhatsApp(textoRecordatorioBarbero(datos), numeroInternacional(barbero.telefono))}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 rounded-full border border-linea px-2.5 py-1 transition hover:bg-white/10"
+                >
+                  <WhatsappLogoIcon size={14} /> Al barbero
+                </a>
+              )}
+            </div>
+          </div>
+        )}
         <a
-          href={`https://wa.me/${tel}`}
+          href={enlaceWhatsApp(undefined, numeroInternacional(cita.telefono))}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1 text-tenue hover:text-texto"

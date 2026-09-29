@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { Campo, Entrada, Mensaje } from "@/components/admin/Campo";
 import { Boton } from "@/components/sitio/Boton";
 import { iniciarSesion } from "../acciones";
 
@@ -8,18 +9,13 @@ export function FormularioAcceso() {
   const [estado, accion, pendiente] = useActionState(iniciarSesion, {});
   return (
     <form action={accion} className="mt-6 space-y-4">
-      <div className="flex flex-col gap-2">
-        <label htmlFor="clave" className="text-sm font-medium">Clave de acceso</label>
-        <input
-          id="clave"
-          name="clave"
-          type="password"
-          required
-          autoComplete="current-password"
-          className="rounded-xl border border-linea bg-superficie px-4 py-3 outline-none transition focus:border-cromo"
-        />
-        {estado.error && <p role="alert" className="text-sm text-peligro">{estado.error}</p>}
-      </div>
+      <Campo etiqueta="Usuario" id="usuario">
+        <Entrada key={estado.valores?.usuario} id="usuario" name="usuario" defaultValue={estado.valores?.usuario} required autoComplete="username" autoCapitalize="none" className="py-3" />
+      </Campo>
+      <Campo etiqueta="Contraseña" id="clave">
+        <Entrada id="clave" name="clave" type="password" required autoComplete="current-password" className="py-3" />
+      </Campo>
+      <Mensaje estado={estado} />
       <Boton type="submit" disabled={pendiente} className="w-full py-3.5">
         {pendiente ? "Entrando..." : "Entrar"}
       </Boton>
