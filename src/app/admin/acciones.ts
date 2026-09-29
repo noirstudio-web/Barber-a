@@ -7,7 +7,7 @@ import { z } from "zod";
 import { horarioPorDefecto, region, type Horario } from "@/config/region";
 import { getDb } from "@/db";
 import { SERVICIOS_INICIALES } from "@/db/seed";
-import { barberias, barberos, bloqueos, citas, codigos, ESTADOS_CITA, galeria, resenas, servicios, usuarios } from "@/db/schema";
+import { barberias, barberos, bloqueos, citas, codigos, ESTADOS_CITA, galeria, pagos, resenas, servicios, usuarios } from "@/db/schema";
 import { limitesPlan, nuevoVencimiento, slugDesde, slugValido } from "@/lib/barberias";
 import { archivoDeImagen, guardarImagen } from "@/lib/imagenes";
 import { borrarSesion, exigirDueno, exigirPanel, exigirUsuario, guardarSesion, hashClave, verificarClave } from "@/lib/sesion";
@@ -120,6 +120,8 @@ export async function activarBarberia(_: EstadoFormulario, form: FormData): Prom
       .where(and(eq(codigos.id, codigo.id), isNull(codigos.usadoEn)))
       .returning({ id: codigos.id });
     if (usado.length === 0) throw new Error("codigo-usado");
+    // El pago registrado con este código queda asociado a la barbería
+    await tx.update(pagos).set({ barberiaId: nueva.id }).where(eq(pagos.codigoId, codigo.id));
 
     await tx.insert(servicios).values(SERVICIOS_INICIALES.map((s, i) => ({ ...s, barberiaId: nueva.id, orden: i })));
     await tx.insert(barberos).values({ barberiaId: nueva.id, nombre: cuenta.data.nombre, especialidad: "Barbero", orden: 0 });
@@ -147,9 +149,14 @@ export async function canjearCodigo(_: EstadoFormulario, form: FormData): Promis
     .where(and(eq(codigos.id, codigo.id), isNull(codigos.usadoEn)))
     .returning({ id: codigos.id });
   if (usado.length === 0) return { error: "El código ya fue usado." };
-  // Si cambia de plan, los días cuentan desde hoy; si renueva el mismo, se suman al vencimiento
-  const venceEn = nuevoVencimiento(codigo.plan === barberia.plan ? barberia.venceEn : null, codigo.dias);
-  await db.update(barberias).set({ plan: codigo.plan, venceEn }).where(eq(barberias.id, barberia.id));
+  await db.update(pagos).set({ barberiaId: barberia.id }).where(eq(pagos.codigoId, codigo.id));
+  // Si cambia de plan, los días cuentan desde hoy; si renueva el mismo, se suman al vencimiento.
+  // Un código nuevo también reactiva una barbería cancelada.
+  const venceEn = nuevoVencimiento(codigo.plan === barberia.plan && !barberia.canceladaEn ? barberia.venceEn : null, codigo.dias);
+  await db
+    .update(barberias)
+    .set({ plan: codigo.plan, venceEn, canceladaEn: null, motivoCancelacion: "" })
+    .where(eq(barberias.id, barberia.id));
   refrescar(barberia.slug);
   return { ok: "¡Listo! Tu suscripción quedó activa." };
 }

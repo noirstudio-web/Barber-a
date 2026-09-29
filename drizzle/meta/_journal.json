@@ -29,6 +29,13 @@
       "when": 1790722507285,
       "tag": "0003_anuncio",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790723207817,
+      "tag": "0004_pagos_y_cancelacion",
+      "breakpoints": true
     }
   ]
 }

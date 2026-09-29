@@ -20,12 +20,13 @@ export const barberiaPorId = cache(async (id: number): Promise<Barberia | null> 
 
 export type EstadoSuscripcion = {
   activa: boolean;
-  motivo: "activa" | "vencida" | "suspendida";
+  motivo: "activa" | "vencida" | "suspendida" | "cancelada";
   diasRestantes: number;
 };
 
-export function estadoSuscripcion(b: Pick<Barberia, "venceEn" | "suspendida">): EstadoSuscripcion {
+export function estadoSuscripcion(b: Pick<Barberia, "venceEn" | "suspendida" | "canceladaEn">): EstadoSuscripcion {
   const diasRestantes = Math.ceil((b.venceEn.getTime() - Date.now()) / 86_400_000);
+  if (b.canceladaEn) return { activa: false, motivo: "cancelada", diasRestantes };
   if (b.suspendida) return { activa: false, motivo: "suspendida", diasRestantes };
   if (diasRestantes <= 0) return { activa: false, motivo: "vencida", diasRestantes };
   return { activa: true, motivo: "activa", diasRestantes };

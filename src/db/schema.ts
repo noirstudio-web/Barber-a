@@ -27,6 +27,9 @@ export const barberias = pgTable(
     plan: text("plan").$type<Plan>().notNull().default("prueba"),
     venceEn: timestamp("vence_en", { withTimezone: true }).notNull(),
     suspendida: boolean("suspendida").notNull().default(false),
+    // Cancelación del plan por parte de Noir Studio (la web queda en pausa hasta reactivarla)
+    canceladaEn: timestamp("cancelada_en", { withTimezone: true }),
+    motivoCancelacion: text("motivo_cancelacion").notNull().default(""),
     creadoEn: timestamp("creado_en", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("barberias_slug_idx").on(t.slug)],
@@ -185,6 +188,27 @@ export const codigos = pgTable(
   (t) => [uniqueIndex("codigos_codigo_idx").on(t.codigo)],
 );
 
+// Pagos que recibe Noir Studio por los planes (se registran a mano: Nequi, transferencia, efectivo...)
+export const pagos = pgTable(
+  "pagos",
+  {
+    id: serial("id").primaryKey(),
+    // Se completa cuando el cliente usa el código o si el pago es de una barbería existente
+    barberiaId: integer("barberia_id").references(() => barberias.id, { onDelete: "set null" }),
+    codigoId: integer("codigo_id").references(() => codigos.id, { onDelete: "set null" }),
+    cliente: text("cliente").notNull().default(""),
+    plan: text("plan").$type<Plan>().notNull(),
+    // En centavos de dólar para no perder decimales
+    montoCentavos: integer("monto_centavos").notNull(),
+    metodo: text("metodo").notNull().default("Otro"),
+    referencia: text("referencia").notNull().default(""),
+    fecha: timestamp("fecha", { withTimezone: true }).notNull().defaultNow(),
+    registradoPor: integer("registrado_por").references(() => usuarios.id, { onDelete: "set null" }),
+  },
+  (t) => [index("pagos_barberia_idx").on(t.barberiaId), index("pagos_fecha_idx").on(t.fecha)],
+);
+
+export type Pago = typeof pagos.$inferSelect;
 export type Barberia = typeof barberias.$inferSelect;
 export type Usuario = typeof usuarios.$inferSelect;
 export type Barbero = typeof barberos.$inferSelect;

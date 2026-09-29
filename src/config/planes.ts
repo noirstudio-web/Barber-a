@@ -64,3 +64,6 @@ export const planes: Record<Plan, DetallePlan> = {
     ],
   },
 };
+
+// Medios de pago que se pueden registrar en el panel de Noir
+export const METODOS_PAGO = ["Nequi", "Daviplata", "Bancolombia", "Transferencia", "Efectivo", "PayPal", "Otro"] as const;

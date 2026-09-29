@@ -29,7 +29,9 @@ export default async function PaginaSuscripcion() {
           </>
         ) : (
           <>
-            <p className="display text-2xl font-semibold">{estado.motivo === "suspendida" ? "Tu cuenta está suspendida" : "Tu suscripción venció"}</p>
+            <p className="display text-2xl font-semibold">
+              {estado.motivo === "suspendida" ? "Tu cuenta está suspendida" : estado.motivo === "cancelada" ? "Tu plan fue cancelado" : "Tu suscripción venció"}
+            </p>
             <p className="mt-2 text-sm">
               Tu web está en pausa y no recibe reservas. Tus datos, citas y clientes siguen guardados. Renueva para activarla de nuevo.
             </p>
