@@ -1,0 +1,1 @@
+ALTER TABLE "barberias" ADD COLUMN "anuncio" text DEFAULT '' NOT NULL;

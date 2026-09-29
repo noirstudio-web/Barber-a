@@ -1,3 +1,4 @@
+import { limitesPlan } from "@/lib/barberias";
 import { exigirDueno } from "@/lib/sesion";
 import { FormularioBarberia } from "./FormularioBarberia";
 
@@ -19,7 +20,7 @@ export default async function PaginaMiBarberia({ searchParams }: PageProps<"/adm
       )}
       <h1 className="text-2xl font-semibold">Mi barbería</h1>
       <p className="mt-1 text-sm text-tenue">Todo lo que ves en tu web. Los cambios se publican al guardar.</p>
-      <FormularioBarberia barberia={barberia} />
+      <FormularioBarberia barberia={barberia} premium={limitesPlan(barberia).herramientasPremium} />
     </div>
   );
 }

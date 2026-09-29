@@ -32,7 +32,7 @@ Se configuran en `src/config/planes.ts` (precio, días y límites):
 |---|---|---|
 | Prueba gratis | 0, 7 días | Todo lo del Premium |
 | Básico | 10 USD/mes | Web + reservas + panel, hasta 3 barberos, recordatorios manuales |
-| Premium | 35 USD/mes | Barberos ilimitados, recordatorios automáticos por WhatsApp, galería y reseñas |
+| Premium | 35 USD/mes | Barberos ilimitados, recordatorios automáticos por WhatsApp, estadísticas del negocio, clientes por recuperar con mensaje de WhatsApp, promoción destacada en la web, exportar clientes a Excel, galería y reseñas, y web sin la marca de Noir Studio |
 
 ## Correrlo en local
 

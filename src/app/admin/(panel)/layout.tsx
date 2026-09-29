@@ -49,7 +49,7 @@ export default async function LayoutPanel({ children }: LayoutProps<"/admin">) {
           </form>
         </div>
         <div className="mx-auto max-w-7xl px-4 pb-2 md:px-8">
-          <EnlacesPanel esDueno={usuario.rol === "dueno"} conExtras={limitesPlan(barberia).galeriaYResenas} />
+          <EnlacesPanel esDueno={usuario.rol === "dueno"} conExtras={limitesPlan(barberia).galeriaYResenas} premium={limitesPlan(barberia).herramientasPremium} />
         </div>
       </header>
       {aviso && (

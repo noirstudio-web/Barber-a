@@ -22,6 +22,13 @@
       "when": 1790720827833,
       "tag": "0002_plataforma",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790722507285,
+      "tag": "0003_anuncio",
+      "breakpoints": true
     }
   ]
 }

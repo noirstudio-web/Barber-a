@@ -93,7 +93,7 @@ export async function sembrar(db: Db, { conCitasDemo = true } = {}) {
   const hoy = ahoraLocal().fecha;
   const filas: (typeof citas.$inferInsert)[] = [];
 
-  for (let d = -21; d <= 6; d++) {
+  for (let d = -45; d <= 6; d++) {
     const fecha = sumarDias(hoy, d);
     const h = demo.horario[diaSemana(fecha)];
     if (!h) continue;
@@ -104,7 +104,9 @@ export async function sembrar(db: Db, { conCitasDemo = true } = {}) {
         const servicio = ss[Math.floor(rand() * ss.length)];
         if (cursor + servicio.duracionMin > h.cierra) break;
         if (rand() < densidad) {
-          const cliente = cs[Math.floor(rand() * cs.length)];
+          // Los últimos 20 clientes solo vinieron hace más de un mes: aparecen como "por recuperar"
+          const disponibles = d < -31 ? cs.length : cs.length - 20;
+          const cliente = cs[Math.floor(rand() * disponibles)];
           filas.push({
             barberiaId,
             codigo: codigo(rand),

@@ -242,6 +242,7 @@ export async function guardarBarberia(_: EstadoFormulario, form: FormData): Prom
     direccion: texto(form, "direccion").slice(0, 120),
     horario,
   };
+  if (limitesPlan(barberia).herramientasPremium) cambios.anuncio = texto(form, "anuncio").slice(0, 120);
   for (const campo of ["logo", "portada"] as const) {
     const archivo = archivoDeImagen(form.get(campo));
     if (archivo) {

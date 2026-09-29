@@ -12,6 +12,8 @@ export type DetallePlan = {
   maxBarberos: number | null;
   recordatoriosAutomaticos: boolean;
   galeriaYResenas: boolean;
+  // Estadísticas, clientes por recuperar, exportar clientes, anuncio en la web y web sin la marca de Noir
+  herramientasPremium: boolean;
   incluye: string[];
 };
 
@@ -23,6 +25,7 @@ export const planes: Record<Plan, DetallePlan> = {
     maxBarberos: null,
     recordatoriosAutomaticos: true,
     galeriaYResenas: true,
+    herramientasPremium: true,
     incluye: ["Todo lo del plan Premium", "7 días sin costo", "Sin tarjeta de crédito"],
   },
   basico: {
@@ -32,6 +35,7 @@ export const planes: Record<Plan, DetallePlan> = {
     maxBarberos: 3,
     recordatoriosAutomaticos: false,
     galeriaYResenas: false,
+    herramientasPremium: false,
     incluye: [
       "Web propia con reservas online",
       "Panel con agenda, clientes y precios",
@@ -46,11 +50,17 @@ export const planes: Record<Plan, DetallePlan> = {
     maxBarberos: null,
     recordatoriosAutomaticos: true,
     galeriaYResenas: true,
+    herramientasPremium: true,
     incluye: [
       "Todo lo del plan Básico",
       "Barberos ilimitados",
       "Recordatorios automáticos por WhatsApp 2 horas antes",
+      "Estadísticas: ingresos, servicios más vendidos y rendimiento por barbero",
+      "Clientes por recuperar con mensaje de WhatsApp listo",
+      "Promociones destacadas en tu web",
+      "Exportar tus clientes a Excel",
       "Galería de trabajos y reseñas",
+      "Web 100% con tu marca, sin la de Noir Studio",
     ],
   },
 };

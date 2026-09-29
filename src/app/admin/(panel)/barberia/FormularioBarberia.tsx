@@ -12,7 +12,7 @@ import { guardarBarberia } from "../../acciones";
 
 const ORDEN_DIAS = [1, 2, 3, 4, 5, 6, 0];
 
-export function FormularioBarberia({ barberia }: { barberia: Barberia }) {
+export function FormularioBarberia({ barberia, premium }: { barberia: Barberia; premium: boolean }) {
   const [estado, accion, pendiente] = useActionState(guardarBarberia, {});
   const [cerrados, setCerrados] = useState<Record<number, boolean>>(
     Object.fromEntries(ORDEN_DIAS.map((d) => [d, barberia.horario[d] === null])),
@@ -36,6 +36,17 @@ export function FormularioBarberia({ barberia }: { barberia: Barberia }) {
         <Campo etiqueta="Descripción" id="descripcion" ayuda="Una o dos frases sobre tu barbería">
           <textarea id="descripcion" name="descripcion" rows={3} maxLength={240} defaultValue={barberia.descripcion} className={claseCampo} />
         </Campo>
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="text-lg font-semibold">Promoción destacada</h2>
+        {premium ? (
+          <Campo etiqueta="Anuncio en la parte de arriba de tu web" id="anuncio" ayuda="Déjalo vacío para no mostrar nada. Ej: 20% de descuento en corte + barba los martes">
+            <Entrada id="anuncio" name="anuncio" maxLength={120} defaultValue={barberia.anuncio} />
+          </Campo>
+        ) : (
+          <p className="rounded-xl bg-superficie px-4 py-3 text-sm text-tenue">Disponible en el plan Premium: muestra una promoción destacada arriba de tu web.</p>
+        )}
       </section>
 
       <section className="space-y-4">

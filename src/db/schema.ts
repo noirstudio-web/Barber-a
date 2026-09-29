@@ -19,6 +19,8 @@ export const barberias = pgTable(
     whatsapp: text("whatsapp").notNull().default(""),
     instagram: text("instagram").notNull().default(""),
     direccion: text("direccion").notNull().default(""),
+    // Promoción destacada arriba de la web (plan Premium). Vacío = sin anuncio
+    anuncio: text("anuncio").notNull().default(""),
     horario: jsonb("horario").$type<Horario>().notNull(),
     logo: text("logo"),
     portada: text("portada"),

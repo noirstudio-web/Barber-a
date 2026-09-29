@@ -4,6 +4,7 @@ import { Marca, marcaNoir } from "@/components/sitio/Marca";
 import { Navegacion } from "@/components/sitio/Navegacion";
 import { Pie } from "@/components/sitio/Pie";
 import { WhatsAppFlotante } from "@/components/sitio/WhatsAppFlotante";
+import { noir } from "@/config/noir";
 import { barberiaPorSlug, estadoSuscripcion, limitesPlan } from "@/lib/barberias";
 
 export const dynamic = "force-dynamic";
@@ -43,11 +44,23 @@ export default async function LayoutBarberia({ children, params }: LayoutProps<"
 
   const base = `/${b.slug}`;
   const marca = { nombre: b.nombre, logo: b.logo, href: base };
+  const premium = limitesPlan(b).herramientasPremium;
   return (
     <>
+      {premium && b.anuncio && (
+        <div className="bg-cromo px-4 py-2.5 text-center text-sm font-semibold text-fondo">{b.anuncio}</div>
+      )}
       <Navegacion marca={marca} base={base} conGaleria={limitesPlan(b).galeriaYResenas} />
       <main>{children}</main>
-      <Pie marca={marca} descripcion={b.descripcion} direccion={b.direccion} whatsapp={b.whatsapp} instagram={b.instagram} />
+      <Pie
+        marca={marca}
+        descripcion={b.descripcion}
+        direccion={b.direccion}
+        whatsapp={b.whatsapp}
+        instagram={b.instagram}
+        // En Premium la web va solo con la marca de la barbería (la demo siempre muestra a Noir)
+        conMarcaNoir={!premium || b.slug === noir.demo}
+      />
       <WhatsAppFlotante numero={b.whatsapp} texto={`Hola ${b.nombre}, tengo una pregunta.`} />
     </>
   );

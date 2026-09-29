@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-export function EnlacesPanel({ esDueno, conExtras }: { esDueno: boolean; conExtras: boolean }) {
+export function EnlacesPanel({ esDueno, conExtras, premium }: { esDueno: boolean; conExtras: boolean; premium: boolean }) {
   const ruta = usePathname();
   const enlaces = [
     { href: "/admin", texto: "Agenda" },
     { href: "/admin/bloqueos", texto: "Bloqueos" },
     { href: "/admin/clientes", texto: "Clientes" },
+    ...(premium ? [{ href: "/admin/estadisticas", texto: "Estadísticas" }] : []),
     { href: "/admin/servicios", texto: "Servicios" },
     { href: "/admin/barberos", texto: "Barberos" },
     ...(conExtras ? [{ href: "/admin/galeria", texto: "Galería y reseñas" }] : []),
