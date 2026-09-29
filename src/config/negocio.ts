@@ -2,7 +2,13 @@
 
 export const negocio = {
   nombre: "Filo Barber Club",
-  nombreCorto: "Filo",
+  // Marca que se ve en el menú, el pie de página y el panel.
+  // Por ahora muestra Noir Studio; para un cliente real, pon aquí su nombre y su logo.
+  marca: {
+    nombre: "Noir",
+    subtitulo: "Studio",
+    logo: "/noir-studio/noir-app-icon.png" as string | null,
+  },
   eslogan: "Cortes con oficio. Reserva en un minuto.",
   descripcion:
     "Barbería en Chapinero. Cortes clásicos y modernos, arreglo de barba con toalla caliente y afeitado a navaja.",

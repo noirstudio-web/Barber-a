@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx scripts/migrar.ts"
+    "db:migrate": "tsx scripts/migrar.ts",
+    "vercel-build": "tsx scripts/migrar.ts && next build"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8",

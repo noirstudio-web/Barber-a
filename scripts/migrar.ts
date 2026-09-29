@@ -10,7 +10,11 @@ import { sembrar } from "../src/db/seed";
 
 async function main() {
   const url = process.env.DATABASE_URL;
-  if (!url) throw new Error("Define DATABASE_URL en .env");
+  if (!url) {
+    // En Vercel la base de datos se conecta desde Storage (Neon) y crea DATABASE_URL
+    if (process.env.VERCEL) throw new Error("Falta DATABASE_URL en las variables de entorno de Vercel.");
+    throw new Error("Define DATABASE_URL en .env");
+  }
   const cliente = postgres(url, { prepare: false, max: 1 });
   const db = drizzle(cliente, { schema });
   await migrate(db, { migrationsFolder: "drizzle" });
