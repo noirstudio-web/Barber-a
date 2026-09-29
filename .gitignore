@@ -43,3 +43,8 @@ next-env.d.ts
 
 # base de datos local de desarrollo
 /.data
+
+# habilidades de agentes instaladas por Vercel (locales)
+/.agents
+/.claude
+skills-lock.json
