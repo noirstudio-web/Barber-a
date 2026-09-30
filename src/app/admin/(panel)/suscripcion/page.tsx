@@ -9,7 +9,7 @@ import { FormularioCodigo } from "./FormularioCodigo";
 export const dynamic = "force-dynamic";
 
 export default async function PaginaSuscripcion() {
-  const { usuario, barberia } = await exigirPanel({ permitirVencida: true });
+  const { usuario, barberia, comoNoir } = await exigirPanel({ permitirVencida: true });
   const estado = estadoSuscripcion(barberia);
   const plan = planes[barberia.plan];
   const vence = new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "long", year: "numeric", timeZone: "America/Bogota" }).format(barberia.venceEn);
@@ -39,7 +39,7 @@ export default async function PaginaSuscripcion() {
         )}
       </div>
 
-      {usuario.rol === "dueno" ? (
+      {usuario.rol === "dueno" || comoNoir ? (
         <>
           <section className="mt-10">
             <h2 className="text-lg font-semibold">¿Tienes un código?</h2>

@@ -1,15 +1,16 @@
 "use server";
 
-import { randomInt } from "node:crypto";
+import { randomBytes, randomInt } from "node:crypto";
 import { and, count, eq, isNull, not } from "drizzle-orm";
+import { del, list } from "@vercel/blob";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { METODOS_PAGO, PLANES, planes, type Plan } from "@/config/planes";
 import { getDb } from "@/db";
-import { barberias, codigos, pagos, usuarios } from "@/db/schema";
+import { barberias, bloqueos, citas, codigos, pagos, usuarios } from "@/db/schema";
 import { nuevoVencimiento } from "@/lib/barberias";
-import { exigirNoir, guardarSesion, hashClave } from "@/lib/sesion";
+import { exigirNoir, guardarSesion, hashClave, verComoNoir } from "@/lib/sesion";
 import { codigoMaestroCorrecto } from "@/lib/token";
 import type { EstadoFormulario } from "../admin/acciones";
 
@@ -225,4 +226,73 @@ export async function reactivarBarberia(id: number) {
   const db = await getDb();
   await db.update(barberias).set({ canceladaEn: null, motivoCancelacion: "" }).where(eq(barberias.id, id));
   await refrescar(id);
+}
+
+// ---------------------------------------------------------------------------
+// Panel y cuentas de cada barbería
+// ---------------------------------------------------------------------------
+
+// Abre el panel de la barbería tal como lo ve su dueño
+export async function entrarPanelBarberia(id: number) {
+  await exigirNoir();
+  await verComoNoir(id);
+  redirect("/admin");
+}
+
+export async function salirDePanelBarberia(id: number) {
+  await exigirNoir();
+  await verComoNoir(null);
+  redirect(`/noir/barberias/${id}`);
+}
+
+export type EstadoClave = { error?: string; clave?: string; usuario?: string };
+
+// Contraseña temporal para un dueño o empleado que olvidó la suya
+export async function restablecerClave(usuarioId: number): Promise<EstadoClave> {
+  await exigirNoir();
+  const db = await getDb();
+  const [u] = await db.select().from(usuarios).where(eq(usuarios.id, usuarioId));
+  if (!u || u.rol === "noir") return { error: "No se encontró la cuenta." };
+  const clave = `Barber-${randomBytes(4).toString("hex")}`;
+  await db.update(usuarios).set({ claveHash: await hashClave(clave) }).where(eq(usuarios.id, usuarioId));
+  return { clave, usuario: u.usuario };
+}
+
+export async function eliminarCuentaBarberia(usuarioId: number) {
+  await exigirNoir();
+  const db = await getDb();
+  const [u] = await db
+    .delete(usuarios)
+    .where(and(eq(usuarios.id, usuarioId), not(eq(usuarios.rol, "noir"))))
+    .returning({ barberiaId: usuarios.barberiaId });
+  if (u?.barberiaId) revalidatePath(`/noir/barberias/${u.barberiaId}`);
+}
+
+// Borra la barbería con todos sus datos (citas, clientes, barberos, cuentas y fotos).
+// Los pagos quedan en el historial sin barbería asociada.
+export async function eliminarBarberia(id: number, _: EstadoFormulario, form: FormData): Promise<EstadoFormulario> {
+  await exigirNoir();
+  const db = await getDb();
+  const [b] = await db.select().from(barberias).where(eq(barberias.id, id));
+  if (!b) return { error: "La barbería ya no existe." };
+  if (texto(form, "confirmar").toLowerCase() !== b.nombre.trim().toLowerCase()) {
+    return { error: `Escribe exactamente "${b.nombre}" para confirmar.` };
+  }
+  await db.transaction(async (tx) => {
+    await tx.delete(citas).where(eq(citas.barberiaId, id));
+    await tx.delete(bloqueos).where(eq(bloqueos.barberiaId, id));
+    await tx.delete(barberias).where(eq(barberias.id, id));
+  });
+  // Fotos subidas por la barbería
+  if (process.env.BLOB_READ_WRITE_TOKEN) {
+    try {
+      const fotos = await list({ prefix: `barberias/${id}/` });
+      if (fotos.blobs.length) await del(fotos.blobs.map((f) => f.url));
+    } catch (e) {
+      console.error("No se pudieron borrar las fotos de la barbería", id, e);
+    }
+  }
+  revalidatePath("/noir", "layout");
+  revalidatePath(`/${b.slug}`, "layout");
+  redirect("/noir/barberias");
 }

@@ -5,13 +5,15 @@ import { Marca } from "@/components/sitio/Marca";
 import { planes } from "@/config/planes";
 import { estadoSuscripcion, limitesPlan } from "@/lib/barberias";
 import { exigirPanel } from "@/lib/sesion";
+import { salirDePanelBarberia } from "../../noir/acciones";
 import { cerrarSesion } from "../acciones";
 import { EnlacesPanel } from "./EnlacesPanel";
 
 export const metadata: Metadata = { title: "Panel", robots: { index: false } };
 
 export default async function LayoutPanel({ children }: LayoutProps<"/admin">) {
-  const { usuario, barberia } = await exigirPanel({ permitirVencida: true });
+  const { usuario, barberia, comoNoir } = await exigirPanel({ permitirVencida: true });
+  const esDueno = usuario.rol === "dueno" || comoNoir;
   const estado = estadoSuscripcion(barberia);
   const aviso =
     !estado.activa
@@ -24,6 +26,20 @@ export default async function LayoutPanel({ children }: LayoutProps<"/admin">) {
 
   return (
     <div className="min-h-dvh">
+      {comoNoir && (
+        <div className="bg-cromo text-fondo">
+          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-4 py-2 text-sm md:px-8">
+            <span>
+              Estás en el panel de <strong>{barberia.nombre}</strong> como Noir Studio. Los cambios que hagas se guardan en su barbería.
+            </span>
+            <form action={salirDePanelBarberia.bind(null, barberia.id)}>
+              <button type="submit" className="rounded-full bg-fondo px-4 py-1.5 text-xs font-semibold text-texto transition hover:bg-superficie-2">
+                Volver a mi panel
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
       <header className="sticky top-0 z-40 border-b border-linea bg-fondo/90 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 md:px-8">
           <Marca nombre={barberia.nombre} logo={barberia.logo} href="/admin" className="max-w-[45vw] lg:max-w-60" />
@@ -49,14 +65,14 @@ export default async function LayoutPanel({ children }: LayoutProps<"/admin">) {
           </form>
         </div>
         <div className="mx-auto max-w-7xl px-4 pb-2 md:px-8">
-          <EnlacesPanel esDueno={usuario.rol === "dueno"} conExtras={limitesPlan(barberia).galeriaYResenas} premium={limitesPlan(barberia).herramientasPremium} />
+          <EnlacesPanel esDueno={esDueno} conExtras={limitesPlan(barberia).galeriaYResenas} premium={limitesPlan(barberia).herramientasPremium} />
         </div>
       </header>
       {aviso && (
         <div className="border-b border-linea bg-superficie">
           <p className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 text-sm md:px-8">
             {aviso}
-            {usuario.rol === "dueno" && (
+            {esDueno && (
               <Link href="/admin/suscripcion" className="font-semibold underline underline-offset-4">
                 Ver planes
               </Link>

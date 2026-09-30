@@ -10,23 +10,30 @@ import { FormularioUsuario } from "./FormularioUsuario";
 export const dynamic = "force-dynamic";
 
 export default async function PaginaCuenta() {
-  const { usuario: yo, barberia } = await exigirPanel({ permitirVencida: true });
+  const { usuario: yo, barberia, comoNoir } = await exigirPanel({ permitirVencida: true });
+  const esDueno = yo.rol === "dueno" || comoNoir;
   const db = await getDb();
   const equipo =
-    yo.rol === "dueno" ? await db.select().from(usuarios).where(eq(usuarios.barberiaId, barberia.id)).orderBy(asc(usuarios.creadoEn)) : [];
+    esDueno ? await db.select().from(usuarios).where(eq(usuarios.barberiaId, barberia.id)).orderBy(asc(usuarios.creadoEn)) : [];
 
   return (
     <div className="grid gap-10 lg:grid-cols-12">
       <section className="lg:col-span-5">
-        <h1 className="text-2xl font-semibold">Mi cuenta</h1>
-        <p className="mt-1 text-sm text-tenue">
-          {yo.nombre}, usuario <span className="text-texto">{yo.usuario}</span> ({yo.rol === "dueno" ? "dueño" : "equipo"})
-        </p>
-        <h2 className="mt-8 text-lg font-semibold">Cambiar contraseña</h2>
-        <FormularioClave />
+        <h1 className="text-2xl font-semibold">{comoNoir ? "Cuentas de la barbería" : "Mi cuenta"}</h1>
+        {comoNoir ? (
+          <p className="mt-1 text-sm text-tenue">Estás como Noir Studio: aquí puedes crear o quitar usuarios de {barberia.nombre}.</p>
+        ) : (
+          <>
+            <p className="mt-1 text-sm text-tenue">
+              {yo.nombre}, usuario <span className="text-texto">{yo.usuario}</span> ({yo.rol === "dueno" ? "dueño" : "equipo"})
+            </p>
+            <h2 className="mt-8 text-lg font-semibold">Cambiar contraseña</h2>
+            <FormularioClave />
+          </>
+        )}
       </section>
 
-      {yo.rol === "dueno" && (
+      {esDueno && (
         <section className="lg:col-span-7">
           <h2 className="text-lg font-semibold">Usuarios del panel</h2>
           <p className="mt-1 text-sm text-tenue">Crea aquí la cuenta de cada persona de tu equipo y pásale su usuario y contraseña.</p>

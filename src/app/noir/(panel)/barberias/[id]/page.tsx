@@ -1,15 +1,17 @@
-import { ArrowLeftIcon, ArrowSquareOutIcon, TrashIcon, WhatsappLogoIcon } from "@phosphor-icons/react/ssr";
-import { count, desc, eq } from "drizzle-orm";
+import { ArrowLeftIcon, ArrowSquareOutIcon, SignInIcon, TrashIcon, WhatsappLogoIcon } from "@phosphor-icons/react/ssr";
+import { asc, count, desc, eq } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PLANES, planes } from "@/config/planes";
 import { getDb } from "@/db";
-import { barberos, clientes, codigos, pagos } from "@/db/schema";
+import { barberos, clientes, codigos, pagos, usuarios } from "@/db/schema";
 import { enlaceRecordarRenovacion, etiquetaEstado, fechaCorta, fechaLarga, fmtUsd, listarBarberias } from "@/lib/noir";
 import { exigirNoir } from "@/lib/sesion";
-import { alternarSuspension, cambiarPlanBarberia, eliminarPago, extenderBarberia, reactivarBarberia } from "../../../acciones";
+import { alternarSuspension, cambiarPlanBarberia, eliminarPago, entrarPanelBarberia, extenderBarberia, reactivarBarberia } from "../../../acciones";
 import { CancelarPlan } from "../../pagos/CancelarPlan";
 import { FormularioPago } from "../../pagos/FormularioPago";
+import { CuentasBarberia } from "./CuentasBarberia";
+import { EliminarBarberia } from "./EliminarBarberia";
 
 export const dynamic = "force-dynamic";
 
@@ -21,11 +23,16 @@ export default async function DetalleBarberia({ params }: PageProps<"/noir/barbe
   const { b, estado } = f;
 
   const db = await getDb();
-  const [historial, usados, [{ totalClientes }], [{ totalBarberos }]] = await Promise.all([
+  const [historial, usados, [{ totalClientes }], [{ totalBarberos }], cuentas] = await Promise.all([
     db.select().from(pagos).where(eq(pagos.barberiaId, id)).orderBy(desc(pagos.fecha)),
     db.select().from(codigos).where(eq(codigos.barberiaId, id)).orderBy(desc(codigos.usadoEn)),
     db.select({ totalClientes: count() }).from(clientes).where(eq(clientes.barberiaId, id)),
     db.select({ totalBarberos: count() }).from(barberos).where(eq(barberos.barberiaId, id)),
+    db
+      .select({ id: usuarios.id, nombre: usuarios.nombre, usuario: usuarios.usuario, rol: usuarios.rol })
+      .from(usuarios)
+      .where(eq(usuarios.barberiaId, id))
+      .orderBy(asc(usuarios.id)),
   ]);
   const e = etiquetaEstado(f);
   const recordar = enlaceRecordarRenovacion(f);
@@ -56,6 +63,11 @@ export default async function DetalleBarberia({ params }: PageProps<"/noir/barbe
             )}
           </div>
           <div className="flex flex-wrap gap-2">
+            <form action={entrarPanelBarberia.bind(null, b.id)}>
+              <button type="submit" className="inline-flex items-center gap-1.5 rounded-full bg-cromo px-4 py-2 text-sm font-semibold text-fondo transition hover:bg-white">
+                <SignInIcon size={16} /> Entrar a su panel
+              </button>
+            </form>
             <a href={`/${b.slug}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-linea px-4 py-2 text-sm transition hover:bg-white/10">
               <ArrowSquareOutIcon size={16} /> Ver web
             </a>
@@ -135,6 +147,12 @@ export default async function DetalleBarberia({ params }: PageProps<"/noir/barbe
         </p>
       </section>
 
+      <section>
+        <h2 className="text-lg font-semibold">Cuentas del panel</h2>
+        <p className="mt-1 text-sm text-tenue">El dueño y su equipo. Si alguien olvidó su contraseña, genérale una nueva.</p>
+        <CuentasBarberia cuentas={cuentas} />
+      </section>
+
       <section id="pago" className="scroll-mt-32">
         <h2 className="text-lg font-semibold">Registrar pago</h2>
         <FormularioPago barberias={[{ id: b.id, nombre: b.nombre, plan: b.plan }]} />
@@ -183,6 +201,10 @@ export default async function DetalleBarberia({ params }: PageProps<"/noir/barbe
             </ul>
           )}
         </div>
+      </section>
+      <section>
+        <h2 className="text-lg font-semibold text-peligro">Eliminar barbería</h2>
+        <EliminarBarberia id={b.id} nombre={b.nombre} />
       </section>
     </div>
   );
