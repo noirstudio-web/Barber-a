@@ -1,11 +1,11 @@
 import { CaretLeftIcon, CaretRightIcon, TrashIcon } from "@phosphor-icons/react/ssr";
 import { and, asc, desc, eq, gte, lt } from "drizzle-orm";
 import Link from "next/link";
-import { planes } from "@/config/planes";
+import { fmtTotales, planes } from "@/config/planes";
 import { region } from "@/config/region";
 import { getDb } from "@/db";
 import { barberias, pagos, usuarios } from "@/db/schema";
-import { fechaCorta, fmtUsd } from "@/lib/noir";
+import { fechaCorta, fmtMonto } from "@/lib/noir";
 import { exigirNoir } from "@/lib/sesion";
 import { ahoraLocal } from "@/lib/tiempo";
 import { eliminarPago } from "../../acciones";
@@ -39,10 +39,9 @@ export default async function PagosNoir({ searchParams }: PageProps<"/noir/pagos
     db.select({ id: barberias.id, nombre: barberias.nombre, plan: barberias.plan }).from(barberias).orderBy(asc(barberias.nombre)),
   ]);
 
-  const total = lista.reduce((s, x) => s + x.p.montoCentavos, 0);
-  const porMetodo = Object.entries(
-    lista.reduce<Record<string, number>>((m, x) => ({ ...m, [x.p.metodo]: (m[x.p.metodo] ?? 0) + x.p.montoCentavos }), {}),
-  ).sort((a, b) => b[1] - a[1]);
+  const total = fmtTotales(lista.map((x) => x.p));
+  const metodos = [...new Set(lista.map((x) => x.p.metodo))];
+  const porMetodo = metodos.map((m) => [m, fmtTotales(lista.filter((x) => x.p.metodo === m).map((x) => x.p))] as const);
   const titulo = new Intl.DateTimeFormat(region.locale, { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${mes}-15T00:00:00Z`));
 
   return (
@@ -64,7 +63,7 @@ export default async function PagosNoir({ searchParams }: PageProps<"/noir/pagos
         <dl className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
           <div className="rounded-2xl bg-superficie p-5">
             <dt className="text-xs text-tenue">Total del mes</dt>
-            <dd className="display mt-1 text-2xl font-semibold tabular-nums">{fmtUsd(total)}</dd>
+            <dd className="display mt-1 text-2xl font-semibold tabular-nums">{total}</dd>
           </div>
           <div className="rounded-2xl bg-superficie p-5">
             <dt className="text-xs text-tenue">Pagos</dt>
@@ -73,7 +72,7 @@ export default async function PagosNoir({ searchParams }: PageProps<"/noir/pagos
           <div className="col-span-2 rounded-2xl bg-superficie p-5">
             <dt className="text-xs text-tenue">Por medio de pago</dt>
             <dd className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm">
-              {porMetodo.length === 0 ? <span className="text-tenue">-</span> : porMetodo.map(([m, c]) => <span key={m}>{m}: <strong className="tabular-nums">{fmtUsd(c)}</strong></span>)}
+              {porMetodo.length === 0 ? <span className="text-tenue">-</span> : porMetodo.map(([m, c]) => <span key={m}>{m}: <strong className="tabular-nums">{c}</strong></span>)}
             </dd>
           </div>
         </dl>
@@ -116,7 +115,7 @@ export default async function PagosNoir({ searchParams }: PageProps<"/noir/pagos
                       {p.metodo}
                       {quien && <span className="block text-xs">registró {quien}</span>}
                     </td>
-                    <td className="px-4 py-3 text-right font-semibold tabular-nums">{fmtUsd(p.montoCentavos)}</td>
+                    <td className="px-4 py-3 text-right font-semibold tabular-nums">{fmtMonto(p.montoCentavos, p.moneda)}</td>
                     <td className="px-2 py-3">
                       <form action={eliminarPago.bind(null, p.id)}>
                         <button type="submit" aria-label="Eliminar pago" className="grid size-8 place-items-center rounded-full text-tenue transition hover:bg-peligro/15 hover:text-peligro">
@@ -134,7 +133,9 @@ export default async function PagosNoir({ searchParams }: PageProps<"/noir/pagos
 
       <section>
         <h2 className="text-lg font-semibold">Registrar un pago</h2>
-        <p className="mt-1 text-sm text-tenue">Para renovaciones de barberías que ya existen. Los pagos de clientes nuevos se registran al generar su código.</p>
+        <p className="mt-1 text-sm text-tenue">
+          Los pagos por Mercado Pago aparecen solos. Aquí registras los que te hagan por otro medio (Nequi, transferencia, efectivo) para renovar una barbería.
+        </p>
         {opciones.length === 0 ? (
           <p className="mt-4 text-sm text-tenue">Aún no hay barberías.</p>
         ) : (

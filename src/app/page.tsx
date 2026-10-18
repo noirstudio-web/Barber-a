@@ -1,17 +1,21 @@
-import { ArrowUpRightIcon, BellRingingIcon, CalendarCheckIcon, CheckIcon, PencilSimpleIcon, UsersThreeIcon, WhatsappLogoIcon } from "@phosphor-icons/react/ssr";
+import { ArrowUpRightIcon, BellRingingIcon, CalendarCheckIcon, CheckIcon, CreditCardIcon, PencilSimpleIcon, UsersThreeIcon, WhatsappLogoIcon } from "@phosphor-icons/react/ssr";
 import Image from "next/image";
 import Link from "next/link";
 import { BotonEnlace, BotonExterno } from "@/components/sitio/Boton";
 import { Marca, marcaNoir } from "@/components/sitio/Marca";
 import { Revelar } from "@/components/sitio/Revelar";
 import { noir } from "@/config/noir";
-import { PLANES, planes } from "@/config/planes";
+import { fmtPrecio, PLANES, planes } from "@/config/planes";
+import { mpConfigurado } from "@/lib/mercadopago";
 import { enlaceWhatsApp } from "@/lib/whatsapp";
 
 const mensajePlan = (plan: string) => `Hola Noir Studio, quiero el plan ${plan} de la web con reservas para mi barbería.`;
+const pagosEnLinea = mpConfigurado();
 
 const pasos = [
-  { titulo: "Nos escribes por WhatsApp", texto: "Eliges tu plan y te enviamos tu código de activación." },
+  pagosEnLinea
+    ? { titulo: "Compras tu plan", texto: "Pagas con PSE, Nequi o tarjeta en Mercado Pago y recibes tu licencia al instante." }
+    : { titulo: "Nos escribes por WhatsApp", texto: "Eliges tu plan y te enviamos tu código de activación." },
   { titulo: "Activas tu barbería", texto: "Pones el código, el nombre de tu barbería y creas tu usuario. En un minuto tu web está en línea." },
   { titulo: "Tus clientes reservan solos", texto: "Comparte tu enlace en Instagram y WhatsApp. Las citas caen directo a tu agenda." },
 ];
@@ -154,8 +158,8 @@ export default function InicioNoir() {
                     <div className={`flex h-full flex-col rounded-2xl p-7 ${destacado ? "bg-cromo text-fondo" : "border border-linea"}`}>
                       <p className="font-semibold">{p.nombre}</p>
                       <p className="mt-3">
-                        <span className="display text-5xl font-semibold">{p.precioUsd === 0 ? "Gratis" : `${p.precioUsd} USD`}</span>
-                        <span className={destacado ? "text-fondo/60" : "text-tenue"}>{p.precioUsd === 0 ? ` / ${p.dias} días` : " / mes"}</span>
+                        <span className="display text-4xl font-semibold xl:text-5xl">{p.precio === 0 ? "Gratis" : fmtPrecio(p.precio)}</span>
+                        <span className={destacado ? "text-fondo/60" : "text-tenue"}>{p.precio === 0 ? ` / ${p.dias} días` : " / mes"}</span>
                       </p>
                       <ul className="mt-6 flex-1 space-y-2.5 text-sm">
                         {p.incluye.map((x) => (
@@ -164,16 +168,28 @@ export default function InicioNoir() {
                           </li>
                         ))}
                       </ul>
-                      <a
-                        href={enlaceWhatsApp(mensajePlan(p.nombre), noir.whatsapp)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={`mt-8 inline-flex items-center justify-center gap-2 rounded-full px-6 py-3.5 text-sm font-semibold transition active:scale-[0.98] ${
-                          destacado ? "bg-fondo text-texto hover:bg-superficie-2" : "border border-linea hover:bg-white/10"
-                        }`}
-                      >
-                        <WhatsappLogoIcon size={18} /> {p.precioUsd === 0 ? "Pedir prueba" : `Comprar ${p.nombre}`}
-                      </a>
+                      {p.precio > 0 && pagosEnLinea ? (
+                        // Con Mercado Pago configurado se compra en línea y la licencia llega al instante
+                        <Link
+                          href={`/comprar/${id}`}
+                          className={`mt-8 inline-flex items-center justify-center gap-2 rounded-full px-6 py-3.5 text-sm font-semibold transition active:scale-[0.98] ${
+                            destacado ? "bg-fondo text-texto hover:bg-superficie-2" : "border border-linea hover:bg-white/10"
+                          }`}
+                        >
+                          <CreditCardIcon size={18} /> Comprar {p.nombre}
+                        </Link>
+                      ) : (
+                        <a
+                          href={enlaceWhatsApp(mensajePlan(p.nombre), noir.whatsapp)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={`mt-8 inline-flex items-center justify-center gap-2 rounded-full px-6 py-3.5 text-sm font-semibold transition active:scale-[0.98] ${
+                            destacado ? "bg-fondo text-texto hover:bg-superficie-2" : "border border-linea hover:bg-white/10"
+                          }`}
+                        >
+                          <WhatsappLogoIcon size={18} /> {p.precio === 0 ? "Pedir prueba" : `Comprar ${p.nombre}`}
+                        </a>
+                      )}
                     </div>
                   </Revelar>
                 );

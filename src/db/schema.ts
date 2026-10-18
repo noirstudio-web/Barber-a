@@ -1,5 +1,5 @@
 import { boolean, index, integer, jsonb, pgTable, serial, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
-import type { Plan } from "@/config/planes";
+import type { Moneda, Plan } from "@/config/planes";
 import type { Horario } from "@/config/region";
 
 // Plataforma multi-barbería: cada tabla de negocio lleva barberia_id.
@@ -30,6 +30,11 @@ export const barberias = pgTable(
     // Cancelación del plan por parte de Noir Studio (la web queda en pausa hasta reactivarla)
     canceladaEn: timestamp("cancelada_en", { withTimezone: true }),
     motivoCancelacion: text("motivo_cancelacion").notNull().default(""),
+    // Débito automático de Mercado Pago (preapproval): id, estado ("authorized", "paused",
+    // "cancelled"...) y plan que se cobra
+    mpSuscripcionId: text("mp_suscripcion_id"),
+    mpSuscripcionEstado: text("mp_suscripcion_estado"),
+    mpSuscripcionPlan: text("mp_suscripcion_plan").$type<Plan>(),
     creadoEn: timestamp("creado_en", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("barberias_slug_idx").on(t.slug)],
@@ -188,7 +193,8 @@ export const codigos = pgTable(
   (t) => [uniqueIndex("codigos_codigo_idx").on(t.codigo)],
 );
 
-// Pagos que recibe Noir Studio por los planes (se registran a mano: Nequi, transferencia, efectivo...)
+// Pagos que recibe Noir Studio por los planes: los de Mercado Pago llegan solos por el webhook,
+// los demás (Nequi, transferencia, efectivo...) se registran a mano en el panel
 export const pagos = pgTable(
   "pagos",
   {
@@ -198,17 +204,38 @@ export const pagos = pgTable(
     codigoId: integer("codigo_id").references(() => codigos.id, { onDelete: "set null" }),
     cliente: text("cliente").notNull().default(""),
     plan: text("plan").$type<Plan>().notNull(),
-    // En centavos de dólar para no perder decimales
+    // En la unidad menor de la moneda (centavos) para no perder decimales
     montoCentavos: integer("monto_centavos").notNull(),
+    moneda: text("moneda").$type<Moneda>().notNull().default("COP"),
     metodo: text("metodo").notNull().default("Otro"),
     referencia: text("referencia").notNull().default(""),
+    // Id del pago en Mercado Pago: evita registrar dos veces la misma notificación
+    mpPagoId: text("mp_pago_id"),
     fecha: timestamp("fecha", { withTimezone: true }).notNull().defaultNow(),
     registradoPor: integer("registrado_por").references(() => usuarios.id, { onDelete: "set null" }),
   },
-  (t) => [index("pagos_barberia_idx").on(t.barberiaId), index("pagos_fecha_idx").on(t.fecha)],
+  (t) => [
+    index("pagos_barberia_idx").on(t.barberiaId),
+    index("pagos_fecha_idx").on(t.fecha),
+    uniqueIndex("pagos_mp_pago_idx").on(t.mpPagoId),
+  ],
 );
 
+// Compras de un plan desde la página de venta (cliente sin cuenta todavía). Al aprobarse el
+// pago en Mercado Pago se genera su código de activación.
+export const compras = pgTable("compras", {
+  id: text("id").primaryKey(),
+  plan: text("plan").$type<Plan>().notNull(),
+  nombre: text("nombre").notNull(),
+  email: text("email").notNull(),
+  whatsapp: text("whatsapp").notNull().default(""),
+  estado: text("estado").notNull().default("pendiente"),
+  codigoId: integer("codigo_id").references(() => codigos.id, { onDelete: "set null" }),
+  creadoEn: timestamp("creado_en", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export type Pago = typeof pagos.$inferSelect;
+export type Compra = typeof compras.$inferSelect;
 export type Barberia = typeof barberias.$inferSelect;
 export type Usuario = typeof usuarios.$inferSelect;
 export type Barbero = typeof barberos.$inferSelect;

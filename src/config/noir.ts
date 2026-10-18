@@ -12,5 +12,5 @@ export const noir = {
 // Direcciones que no pueden usarse como nombre de una barbería
 export const SLUGS_RESERVADOS = new Set([
   "admin", "noir", "api", "reservar", "reserva", "img", "noir-studio", "uploads", "_next",
-  "favicon.ico", "robots.txt", "sitemap.xml", "registro", "login", "planes", "precios",
+  "favicon.ico", "robots.txt", "sitemap.xml", "registro", "login", "planes", "precios", "comprar", "pagos",
 ]);

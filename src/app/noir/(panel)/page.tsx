@@ -1,10 +1,10 @@
 import { WarningCircleIcon, WhatsappLogoIcon } from "@phosphor-icons/react/ssr";
 import { desc, gte } from "drizzle-orm";
 import Link from "next/link";
-import { planes } from "@/config/planes";
+import { fmtPrecio, fmtTotales, planes } from "@/config/planes";
 import { getDb } from "@/db";
 import { pagos } from "@/db/schema";
-import { enlaceRecordarRenovacion, etiquetaEstado, fechaCorta, fechaLarga, fmtUsd, listarBarberias, type FilaBarberia } from "@/lib/noir";
+import { enlaceRecordarRenovacion, etiquetaEstado, fechaCorta, fechaLarga, fmtMonto, listarBarberias, type FilaBarberia } from "@/lib/noir";
 import { exigirNoir } from "@/lib/sesion";
 
 export const dynamic = "force-dynamic";
@@ -64,15 +64,16 @@ export default async function ResumenNoir() {
   const resumen = [
     { t: "Barberías activas", v: activas.length },
     { t: "En prueba gratis", v: activas.filter((f) => f.b.plan === "prueba").length },
-    { t: "Ingresos este mes", v: fmtUsd(pagosMes.reduce((s, p) => s + p.montoCentavos, 0)) },
-    { t: "Ingreso mensual esperado", v: `${activas.reduce((s, f) => s + planes[f.b.plan].precioUsd, 0)} USD` },
+    { t: "Ingresos este mes", v: fmtTotales(pagosMes) },
+    { t: "Ingreso mensual esperado", v: fmtPrecio(activas.reduce((s, f) => s + planes[f.b.plan].precio, 0)) },
+    { t: "Con débito automático", v: activas.filter((f) => f.b.mpSuscripcionEstado === "authorized").length },
   ];
 
   return (
     <div className="space-y-10">
       <div>
         <h1 className="text-2xl font-semibold">Resumen</h1>
-        <dl className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <dl className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-5">
           {resumen.map((r) => (
             <div key={r.t} className="rounded-2xl bg-superficie p-5">
               <dt className="text-xs text-tenue">{r.t}</dt>
@@ -141,7 +142,7 @@ export default async function ResumenNoir() {
                     {planes[p.plan].nombre}, {p.metodo}, {fechaCorta(p.fecha)}
                   </span>
                 </span>
-                <span className="font-semibold tabular-nums">{fmtUsd(p.montoCentavos)}</span>
+                <span className="font-semibold tabular-nums">{fmtMonto(p.montoCentavos, p.moneda)}</span>
               </li>
             ))}
           </ul>

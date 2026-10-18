@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, gt, sql } from "drizzle-orm";
 import { noir } from "@/config/noir";
-import { planes } from "@/config/planes";
+import { fmtPrecio, planes, type Moneda } from "@/config/planes";
 import { region } from "@/config/region";
 import { getDb } from "@/db";
 import { barberias, citas, usuarios, type Barberia } from "@/db/schema";
@@ -55,9 +55,9 @@ export function fechaCorta(d: Date) {
   return new Intl.DateTimeFormat(region.locale, { day: "numeric", month: "short", timeZone: region.zonaHoraria }).format(d);
 }
 
-export function fmtUsd(centavos: number) {
-  const usd = centavos / 100;
-  return `${Number.isInteger(usd) ? usd : usd.toFixed(2)} USD`;
+// Monto guardado en centavos, en su moneda: 14000000 COP -> "140.000 COP"
+export function fmtMonto(centavos: number, moneda: Moneda = "COP") {
+  return fmtPrecio(centavos / 100, moneda);
 }
 
 export function etiquetaEstado(f: Pick<FilaBarberia, "b" | "estado" | "porVencer">) {
@@ -79,7 +79,7 @@ export function enlaceRecordarRenovacion(f: FilaBarberia) {
     : `venció el ${fechaLarga(f.b.venceEn)} y tu web está en pausa`;
   const texto =
     f.b.plan === "prueba"
-      ? `${saludo}, tu prueba gratis de ${f.b.nombre} ${cuando}. Para seguir recibiendo reservas, el plan ${plan.nombre} cuesta ${plan.precioUsd} USD al mes. ¿Te envío los datos de pago?`
-      : `${saludo}, tu plan ${plan.nombre} de ${f.b.nombre} ${cuando}. La renovación son ${plan.precioUsd} USD. ¿Te envío los datos de pago?`;
+      ? `${saludo}, tu prueba gratis de ${f.b.nombre} ${cuando}. Para seguir recibiendo reservas, el plan ${plan.nombre} cuesta ${fmtPrecio(plan.precio)} al mes. Puedes pagarlo desde tu panel, en Suscripción.`
+      : `${saludo}, tu plan ${plan.nombre} de ${f.b.nombre} ${cuando}. La renovación son ${fmtPrecio(plan.precio)} y la puedes pagar desde tu panel, en Suscripción.`;
   return enlaceWhatsApp(texto, f.b.whatsapp);
 }

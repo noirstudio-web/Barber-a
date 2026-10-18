@@ -56,8 +56,14 @@ export function FormularioPago({ barberias }: { barberias: Opcion[] }) {
             ))}
           </select>
         </Campo>
-        <Campo etiqueta="Monto (USD)" id="monto">
-          <Entrada key={plan} id="monto" name="monto" inputMode="decimal" required defaultValue={planes[plan].precioUsd} />
+        <Campo etiqueta="Monto" id="monto">
+          <div className="flex gap-2">
+            <Entrada key={plan} id="monto" name="monto" inputMode="decimal" required defaultValue={planes[plan].precio} />
+            <select name="moneda" aria-label="Moneda" defaultValue="COP" className={`${claseCampo} w-24`}>
+              <option>COP</option>
+              <option>USD</option>
+            </select>
+          </div>
         </Campo>
         <Campo etiqueta="Medio de pago" id="metodo">
           <select id="metodo" name="metodo" className={claseCampo} defaultValue="Nequi">

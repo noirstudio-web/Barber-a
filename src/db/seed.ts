@@ -5,6 +5,7 @@ import { hashClave } from "@/lib/claves";
 import { ahoraLocal, diaSemana, sumarDias } from "@/lib/tiempo";
 import type { Db } from "./index";
 import { barberias, barberos, citas, clientes, galeria, resenas, servicios, usuarios } from "./schema";
+import { urlBaseDatos } from "./url";
 
 const BARBEROS = [
   { nombre: "Mateo Ríos", especialidad: "Fades y degradados", estilo: "Limpio, preciso, de líneas marcadas.", foto: "/img/barbero-mateo.jpg" },
@@ -56,7 +57,7 @@ export async function sembrar(db: Db, { conCitasDemo = true } = {}) {
   }
 
   // Solo en local (base embebida): usuario "demo" / "demo1234" para entrar al panel de la demo
-  if (!process.env.DATABASE_URL) {
+  if (!urlBaseDatos()) {
     await db
       .insert(usuarios)
       .values({ barberiaId, nombre: "Demo", usuario: "demo", claveHash: await hashClave("demo1234"), rol: "dueno" })

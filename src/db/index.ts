@@ -4,25 +4,26 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
+import { urlBaseDatos } from "./url";
 
 export type Db = PostgresJsDatabase<typeof schema>;
 
-// Con DATABASE_URL (Neon, Supabase o cualquier Postgres) se usa esa base de datos.
-// Sin DATABASE_URL, en desarrollo se usa PGlite: Postgres embebido que guarda los datos
+// Con Supabase o DATABASE_URL (ver url.ts) se usa esa base de datos.
+// Sin ninguna, en desarrollo se usa PGlite: Postgres embebido que guarda los datos
 // en .data/, para que la demo funcione sin configurar nada.
 
 const global = globalThis as unknown as { __db?: Promise<Db> };
 
 async function crear(): Promise<Db> {
-  const url = process.env.DATABASE_URL;
+  const url = urlBaseDatos();
   if (url) {
-    // prepare: false para ser compatible con poolers (Neon, Supabase)
+    // prepare: false para ser compatible con poolers (Supabase, Neon)
     const cliente = postgres(url, { prepare: false, max: 5 });
     return drizzle(cliente, { schema });
   }
 
   if (process.env.NODE_ENV === "production" && process.env.VERCEL) {
-    throw new Error("Falta DATABASE_URL. Configúrala en las variables de entorno de Vercel.");
+    throw new Error("Falta la base de datos. Conecta Supabase en las variables de entorno de Vercel.");
   }
 
   const { PGlite } = await import("@electric-sql/pglite");

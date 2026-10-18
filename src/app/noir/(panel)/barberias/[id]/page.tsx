@@ -5,7 +5,8 @@ import { notFound } from "next/navigation";
 import { PLANES, planes } from "@/config/planes";
 import { getDb } from "@/db";
 import { barberos, clientes, codigos, pagos, usuarios } from "@/db/schema";
-import { enlaceRecordarRenovacion, etiquetaEstado, fechaCorta, fechaLarga, fmtUsd, listarBarberias } from "@/lib/noir";
+import { enlaceRecordarRenovacion, etiquetaEstado, fechaCorta, fechaLarga, fmtMonto, listarBarberias } from "@/lib/noir";
+import { fmtTotales } from "@/config/planes";
 import { exigirNoir } from "@/lib/sesion";
 import { alternarSuspension, cambiarPlanBarberia, eliminarPago, entrarPanelBarberia, extenderBarberia, reactivarBarberia } from "../../../acciones";
 import { CancelarPlan } from "../../pagos/CancelarPlan";
@@ -36,7 +37,15 @@ export default async function DetalleBarberia({ params }: PageProps<"/noir/barbe
   ]);
   const e = etiquetaEstado(f);
   const recordar = enlaceRecordarRenovacion(f);
-  const pagado = historial.reduce((s, p) => s + p.montoCentavos, 0);
+  const pagado = fmtTotales(historial);
+  const debito =
+    b.mpSuscripcionEstado === "authorized"
+      ? `Activo (plan ${planes[b.mpSuscripcionPlan ?? b.plan].nombre})`
+      : b.mpSuscripcionEstado === "pending"
+        ? "Pendiente de confirmar"
+        : b.mpSuscripcionEstado === "cancelled"
+          ? "Cancelado"
+          : "No";
   const boton = "rounded-full border border-linea px-3 py-1.5 text-xs transition hover:bg-white/10";
 
   return (
@@ -85,12 +94,13 @@ export default async function DetalleBarberia({ params }: PageProps<"/noir/barbe
         </div>
       </div>
 
-      <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <dl className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         {[
           { t: "Dueño", v: f.dueno ? `${f.dueno.nombre} (${f.dueno.usuario})` : "-" },
           { t: "WhatsApp", v: b.whatsapp ? `+${b.whatsapp}` : "-" },
           { t: "Actividad", v: `${f.citasMes} citas en 30 días, ${totalClientes} clientes, ${totalBarberos} barberos` },
-          { t: "Total pagado", v: fmtUsd(pagado) },
+          { t: "Total pagado", v: pagado },
+          { t: "Débito automático (Mercado Pago)", v: debito },
         ].map((d) => (
           <div key={d.t} className="rounded-2xl bg-superficie p-4">
             <dt className="text-xs text-tenue">{d.t}</dt>
@@ -168,7 +178,7 @@ export default async function DetalleBarberia({ params }: PageProps<"/noir/barbe
               {historial.map((p) => (
                 <li key={p.id} className="flex items-center justify-between gap-3 rounded-xl bg-superficie px-4 py-3 text-sm">
                   <div>
-                    <p className="font-semibold tabular-nums">{fmtUsd(p.montoCentavos)}</p>
+                    <p className="font-semibold tabular-nums">{fmtMonto(p.montoCentavos, p.moneda)}</p>
                     <p className="text-tenue">
                       {planes[p.plan].nombre}, {p.metodo}
                       {p.referencia && `, ref. ${p.referencia}`}, {fechaCorta(p.fecha)}

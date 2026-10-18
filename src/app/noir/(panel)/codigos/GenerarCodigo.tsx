@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react";
 import { Campo, claseCampo, Entrada, Mensaje } from "@/components/admin/Campo";
 import { Boton } from "@/components/sitio/Boton";
-import { METODOS_PAGO, PLANES, planes, type Plan } from "@/config/planes";
+import { fmtPrecio, METODOS_PAGO, PLANES, planes, type Plan } from "@/config/planes";
 import { generarCodigo, type EstadoCodigo } from "../../acciones";
 import { EnviarCodigo } from "./EnviarCodigo";
 
@@ -31,7 +31,7 @@ export function GenerarCodigo() {
             >
               {PLANES.map((p) => (
                 <option key={p} value={p}>
-                  {planes[p].nombre} {planes[p].precioUsd ? `(${planes[p].precioUsd} USD)` : ""}
+                  {planes[p].nombre} {planes[p].precio ? `(${fmtPrecio(planes[p].precio)})` : ""}
                 </option>
               ))}
             </select>
@@ -52,8 +52,14 @@ export function GenerarCodigo() {
             </label>
             {pagado && (
               <div className="grid gap-4 sm:grid-cols-3">
-                <Campo etiqueta="Monto (USD)" id="monto">
-                  <Entrada key={plan} id="monto" name="monto" inputMode="decimal" required defaultValue={planes[plan].precioUsd} />
+                <Campo etiqueta="Monto" id="monto">
+                  <div className="flex gap-2">
+                    <Entrada key={plan} id="monto" name="monto" inputMode="decimal" required defaultValue={planes[plan].precio} />
+                    <select name="moneda" aria-label="Moneda" defaultValue="COP" className={`${claseCampo} w-24`}>
+                      <option>COP</option>
+                      <option>USD</option>
+                    </select>
+                  </div>
                 </Campo>
                 <Campo etiqueta="Medio" id="metodo">
                   <select id="metodo" name="metodo" className={claseCampo} defaultValue="Nequi">

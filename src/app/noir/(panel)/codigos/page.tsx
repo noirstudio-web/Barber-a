@@ -3,7 +3,7 @@ import { desc, eq } from "drizzle-orm";
 import { planes } from "@/config/planes";
 import { getDb } from "@/db";
 import { barberias, codigos, pagos } from "@/db/schema";
-import { fmtUsd } from "@/lib/noir";
+import { fmtMonto } from "@/lib/noir";
 import { exigirNoir } from "@/lib/sesion";
 import { eliminarCodigo } from "../../acciones";
 import { EnviarCodigo } from "./EnviarCodigo";
@@ -17,7 +17,7 @@ export default async function PaginaCodigos() {
   await exigirNoir();
   const db = await getDb();
   const lista = await db
-    .select({ c: codigos, barberia: barberias.nombre, pago: pagos.montoCentavos })
+    .select({ c: codigos, barberia: barberias.nombre, pago: pagos.montoCentavos, moneda: pagos.moneda, metodo: pagos.metodo })
     .from(codigos)
     .leftJoin(barberias, eq(codigos.barberiaId, barberias.id))
     .leftJoin(pagos, eq(pagos.codigoId, codigos.id))
@@ -41,13 +41,20 @@ export default async function PaginaCodigos() {
           <p className="mt-4 rounded-2xl border border-dashed border-linea px-6 py-10 text-center text-sm text-tenue">Aún no has generado códigos.</p>
         ) : (
           <ul className="mt-4 space-y-2">
-            {lista.map(({ c, barberia, pago }) => (
+            {lista.map(({ c, barberia, pago, moneda, metodo }) => (
               <li key={c.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-superficie px-4 py-3 text-sm">
                 <div>
                   <p className="font-mono tracking-widest">{c.codigo}</p>
                   <p className="mt-0.5 text-tenue">
                     {planes[c.plan].nombre}, {c.dias} días{c.nota && `, ${c.nota}`}
-                    {pago !== null ? <span className="text-exito">, pagó {fmtUsd(pago)}</span> : c.plan !== "prueba" && <span>, sin pago registrado</span>}
+                    {pago !== null ? (
+                      <span className="text-exito">
+                        , pagó {fmtMonto(pago, moneda ?? "COP")}
+                        {metodo && ` por ${metodo}`}
+                      </span>
+                    ) : (
+                      c.plan !== "prueba" && <span>, sin pago registrado</span>
+                    )}
                   </p>
                 </div>
                 {c.usadoEn ? (

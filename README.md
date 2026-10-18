@@ -16,11 +16,16 @@ Plataforma de alquiler: cada barbería tiene su propia web con reservas online y
 
 ## Cómo se vende y se activa
 
-1. El cliente escribe por WhatsApp desde la página de venta y elige un plan.
-2. En `/noir/codigos` generas un código (plan y días) y lo envías con el botón de WhatsApp. El mensaje ya incluye el enlace de activación.
-3. El cliente abre el enlace, pone el nombre de su barbería, su usuario y contraseña. Su web queda en línea al instante con servicios de ejemplo y él como primer barbero.
-4. Desde su panel edita todo: nombre, frase, descripción, WhatsApp, Instagram, dirección, horario, logo, portada, servicios y precios, barberos con foto, galería y reseñas. También crea los usuarios de su equipo.
-5. Para renovar o cambiar de plan le envías otro código y lo pone en **Suscripción**. También puedes extender días, cambiar el plan o suspender desde `/noir`.
+**Con Mercado Pago (automático)**
+1. En la página de venta el cliente elige un plan, deja su nombre, correo y WhatsApp, y paga en Mercado Pago (PSE, Nequi, tarjeta, Efecty).
+2. Al aprobarse el pago se genera su licencia (código de activación) y la ve en pantalla con el botón "Activar mi barbería ahora".
+3. Cada mes el dueño renueva desde **Suscripción** en su panel: paga con link o activa el **débito automático** con tarjeta, y el plan se renueva solo al aprobarse cada cobro.
+
+**A mano (WhatsApp, Nequi, transferencia...)**
+1. En `/noir/codigos` generas una licencia (plan y días), registras el pago y la envías con el botón de WhatsApp. El mensaje ya incluye el enlace de activación.
+2. Para renovar le envías otra licencia o registras el pago en `/noir/pagos` con "Renovar la suscripción".
+
+En ambos casos el cliente activa su barbería con el nombre, su usuario y contraseña; su web queda en línea al instante con servicios de ejemplo y él como primer barbero. Desde su panel edita todo: nombre, frase, descripción, WhatsApp, Instagram, dirección, horario, logo, portada, servicios y precios, barberos con foto, galería y reseñas, y los usuarios de su equipo. Desde `/noir` puedes extender días, cambiar el plan, suspender, cancelar o entrar a su panel.
 
 Si la suscripción vence o la suspendes, su web muestra "no disponible" y el panel solo deja entrar a Suscripción. No se borra ningún dato.
 
@@ -31,8 +36,8 @@ Se configuran en `src/config/planes.ts` (precio, días y límites):
 | Plan | Precio | Incluye |
 |---|---|---|
 | Prueba gratis | 0, 7 días | Todo lo del Premium |
-| Básico | 10 USD/mes | Web + reservas + panel, hasta 3 barberos, recordatorios manuales |
-| Premium | 35 USD/mes | Barberos ilimitados, recordatorios automáticos por WhatsApp, estadísticas del negocio, clientes por recuperar con mensaje de WhatsApp, promoción destacada en la web, exportar clientes a Excel, galería y reseñas, y web sin la marca de Noir Studio |
+| Básico | 40.000 COP/mes | Web + reservas + panel, hasta 3 barberos, recordatorios manuales |
+| Premium | 140.000 COP/mes | Barberos ilimitados, recordatorios automáticos por WhatsApp, estadísticas del negocio, clientes por recuperar con mensaje de WhatsApp, promoción destacada en la web, exportar clientes a Excel, galería y reseñas, y web sin la marca de Noir Studio |
 
 ## Correrlo en local
 
@@ -55,14 +60,32 @@ Variables de entorno (ver `.env.example`):
 
 | Variable | Para qué |
 |---|---|
-| `DATABASE_URL` | Postgres (Neon). Lo crea la integración de Neon en Vercel |
+| `SUPABASE_POSTGRES_URL` y `SUPABASE_POSTGRES_URL_NON_POOLING` | Base de datos en Supabase. Las crea la integración de Supabase en Vercel (prefijo `SUPABASE_`). Si no existen se usa `DATABASE_URL` |
+| `MP_ACCESS_TOKEN` | Access Token de tu aplicación de Mercado Pago (`TEST-...` en pruebas, `APP_USR-...` en real) |
+| `MP_WEBHOOK_SECRET` | Clave secreta de los Webhooks de Mercado Pago |
 | `BLOB_READ_WRITE_TOKEN` | Fotos que suben las barberías. Lo crea el almacenamiento Blob de Vercel |
 | `ADMIN_PASSWORD` | Código maestro para crear cuentas de Noir en `/noir/registro` |
 | `SESSION_SECRET` | Firma de las sesiones |
 | `CRON_SECRET` | Protege el cron de recordatorios |
 | `NEXT_PUBLIC_NOIR_WHATSAPP` | WhatsApp de ventas de Noir Studio (con indicativo, sin +) |
 
-Cada publicación aplica las migraciones de la base de datos antes de compilar (`npm run vercel-build`).
+Cada publicación aplica las migraciones de la base de datos antes de compilar (`npm run vercel-build`). Las tablas tienen RLS activado para que la API pública de Supabase no exponga datos; la web se conecta directo a Postgres.
+
+### Mercado Pago
+
+1. En [Mercado Pago Developers](https://www.mercadopago.com.co/developers/panel/app) crea una aplicación (Pagos online, Checkout Pro y Suscripciones).
+2. Copia el **Access Token** a `MP_ACCESS_TOKEN`.
+3. En **Webhooks** configura la URL `https://<tu-dominio>/api/mercadopago/webhook` con los eventos **Pagos**, **Planes y suscripciones** (suscripción y pagos autorizados). Copia la clave secreta a `MP_WEBHOOK_SECRET`.
+
+Sin `MP_ACCESS_TOKEN` todo funciona igual, pero los botones de compra vuelven a ser por WhatsApp.
+
+### Pasar los datos de Neon a Supabase
+
+```bash
+ORIGEN_URL=<url de Neon> DESTINO_URL=<SUPABASE_POSTGRES_URL_NON_POOLING> npx tsx scripts/copiar-a-supabase.ts
+```
+
+Crea las tablas en Supabase, copia todas las filas conservando los ids y verifica que las cantidades coincidan. No borra nada de Neon.
 
 ## Avisos y recordatorios por WhatsApp
 

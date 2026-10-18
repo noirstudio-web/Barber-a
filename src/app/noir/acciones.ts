@@ -6,7 +6,7 @@ import { del, list } from "@vercel/blob";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { METODOS_PAGO, PLANES, planes, type Plan } from "@/config/planes";
+import { METODOS_PAGO, PLANES, planes, type Moneda, type Plan } from "@/config/planes";
 import { getDb } from "@/db";
 import { barberias, bloqueos, citas, codigos, pagos, usuarios } from "@/db/schema";
 import { nuevoVencimiento } from "@/lib/barberias";
@@ -77,22 +77,26 @@ export async function eliminarUsuarioNoir(id: number) {
 // Pagos
 // ---------------------------------------------------------------------------
 
-// "35", "35.5" o "35,50" -> 3550 centavos
-function centavos(valor: string): number | null {
-  const n = Number(valor.replace(/\s/g, "").replace(",", "."));
-  return Number.isFinite(n) && n >= 0 && n < 100_000 ? Math.round(n * 100) : null;
+// Pesos: "140.000" o "140000" -> 14000000 centavos. Dólares: "35,50" o "35.5" -> 3550.
+function centavos(valor: string, moneda: Moneda): number | null {
+  const limpio = valor.replace(/\s/g, "");
+  const n = moneda === "COP" ? Number(limpio.replace(/[.,]/g, "")) : Number(limpio.replace(",", "."));
+  const maximo = moneda === "COP" ? 50_000_000 : 100_000;
+  return Number.isFinite(n) && n >= 0 && n < maximo ? Math.round(n * 100) : null;
 }
 
-type DatosPago = { plan: Plan; cliente: string; montoCentavos: number; metodo: string; referencia: string };
+type DatosPago = { plan: Plan; cliente: string; montoCentavos: number; moneda: Moneda; metodo: string; referencia: string };
 
 function leerPago(form: FormData, plan: Plan): DatosPago | string {
-  const monto = centavos(texto(form, "monto") || String(planes[plan].precioUsd));
-  if (monto === null) return "Escribe un monto válido en dólares.";
+  const moneda: Moneda = texto(form, "moneda") === "USD" ? "USD" : "COP";
+  const monto = centavos(texto(form, "monto") || String(planes[plan].precio), moneda);
+  if (monto === null) return "Escribe un monto válido.";
   const metodo = texto(form, "metodo");
   return {
     plan,
     cliente: texto(form, "cliente").slice(0, 80),
     montoCentavos: monto,
+    moneda,
     metodo: (METODOS_PAGO as readonly string[]).includes(metodo) ? metodo : "Otro",
     referencia: texto(form, "referencia").slice(0, 80),
   };
